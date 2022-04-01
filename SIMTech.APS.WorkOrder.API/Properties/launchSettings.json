@@ -1,0 +1,69 @@
+{
+  "iisSettings": {
+    "windowsAuthentication": false,
+    "anonymousAuthentication": true,
+    "iisExpress": {
+      "applicationUrl": "http://localhost:53187",
+      "sslPort": 44332
+    }
+  },
+  "$schema": "http://json.schemastore.org/launchsettings.json",
+  "profiles": {
+    "IIS Express": {
+      "commandName": "IISExpress",
+      "launchBrowser": true,
+      "launchUrl": "swagger",
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development",
+        "RPS_DB_WORKORDER": "Data source= 127.0.0.1\\SQLEXPRESS01,1433;Initial Catalog=SIMTech.APS.WorkOrder;User Id=sa;Password=HMLVsa201301;",
+        "RPS_UI_URL": "http://localhost:4200",
+        "RPS_SETTING_URL": "http://localhost:5111/api/option/",
+        "RPS_PRODUCT_URL": "http://localhost:5110/api/item/",
+        "RPS_PRODUCTBOM_URL": "http://localhost:5110/api/bom/",
+        "RPS_SALESORDER_URL": "http://localhost:5112/api/salesorder/",
+        "RPS_CUSTOMER_URL": "http://localhost:5108/api/customer/",
+        "RPS_LOCATION_URL": "http://localhost:5117/api/location/",
+        "RPS_ROUTE_URL": "http://localhost:5116/api/route/",
+        "RPS_INTEGRATION_URL": "http://localhost:5119/api/integration/",
+        "RPS_INVENTORY_URL": "http://localhost:5120/api/inventory/"
+      }
+    },
+    "WorkOrder": {
+      "commandName": "Project",
+      "launchBrowser": true,
+      "launchUrl": "swagger",
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development",
+        "RPS_DB_WORKORDER": "Data source= 127.0.0.1\\SQLEXPRESS01,1433;Initial Catalog=SIMTech.APS.WorkOrder;User Id=sa;Password=HMLVsa201301;",
+        "RPS_UI_URL": "http://localhost:4200",
+        "RPS_SETTING_URL": "http://localhost:5111/api/option/",
+        "RPS_PRODUCT_URL": "http://localhost:5110/api/item/",
+        "RPS_PRODUCTBOM_URL": "http://localhost:5110/api/bom/",
+        "RPS_SALESORDER_URL": "http://localhost:5112/api/salesorder/",
+        "RPS_CUSTOMER_URL": "http://localhost:5108/api/customer/",
+        "RPS_LOCATION_URL": "http://localhost:5117/api/location/",
+        "RPS_ROUTE_URL": "http://localhost:5116/api/route/",
+        "RPS_INTEGRATION_URL": "http://localhost:5119/api/integration/",
+        "RPS_INVENTORY_URL": "http://localhost:5120/api/inventory/",
+        "RABBITMQ_HOST": "localhost",
+        "RABBITMQ_PORT": "31672",
+        "RABBITMQ_USERNAME": "guest",
+        "RABBITMQ_PASSWORD": "guest",
+        "RABBITMQ_VHOST": "",
+        "RABBITMQ_EXCHANGE": "cpps-rps",
+        "RABBITMQ_QUEUES_SALESORDER": "rps-salesorder-status",
+        "RABBITMQ_QUEUES_INVENTORY": "rps-material-shortage,rps-material-shortage1",
+        "RABBITMQ_ENABLE": "100"
+      },
+      "dotnetRunMessages": "true",
+      "applicationUrl": "http://localhost:5000"
+    },
+    "Docker": {
+      "commandName": "Docker",
+      "launchBrowser": true,
+      "launchUrl": "{Scheme}://{ServiceHost}:{ServicePort}/swagger",
+      "publishAllPorts": true,
+      "useSSL": true
+    }
+  }
+}

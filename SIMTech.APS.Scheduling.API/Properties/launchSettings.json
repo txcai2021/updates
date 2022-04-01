@@ -1,0 +1,77 @@
+{
+  "iisSettings": {
+    "windowsAuthentication": false,
+    "anonymousAuthentication": true,
+    "iisExpress": {
+      "applicationUrl": "http://localhost:53242",
+      "sslPort": 44367
+    }
+  },
+  "$schema": "http://json.schemastore.org/launchsettings.json",
+  "profiles": {
+    "IIS Express": {
+      "commandName": "IISExpress",
+      "launchBrowser": true,
+      "launchUrl": "swagger",
+      "environmentVariables": {
+        "RPS_UI_URL": "http://localhost:4200",
+        "RPS_WORKORDER_URL": "http://localhost:5118/api/workorder/",
+        "RPS_SETTING_URL": "http://localhost:5111/api/option/",
+        "RPS_CODE_URL": "http://localhost:5111/api/code/",
+        "RPS_DB_DPS": "Data source= 127.0.0.1\\SQLEXPRESS01,1433;Initial Catalog=SIMTech.APS.DPS;User Id=sa;Password=HMLVsa201301;",
+        "RABBITMQ_HOST": "localhost",
+        "RABBITMQ_PORT": "31672",
+        "RABBITMQ_USERNAME": "guest",
+        "RABBITMQ_PASSWORD": "guest",
+        "RABBITMQ_VHOST": "",
+        "RABBITMQ_EXCHANGE": "cpps-rps",
+        "RABBITMQ_QUEUES": "rps-schedule1,rps-schedule2",
+        "ASPNETCORE_ENVIRONMENT": "Development"
+      }
+    },
+    "SIMTech.APS.Scheduling.API": {
+      "commandName": "Project",
+      "launchBrowser": true,
+      "launchUrl": "swagger",
+      "environmentVariables": {
+        "RPS_UI_URL": "http://localhost:4200",
+        "RPS_WORKORDER_URL": "http://localhost:5118/api/workorder/",
+        "RPS_SETTING_URL": "http://localhost:5111/api/option/",
+        "RPS_CODE_URL": "http://localhost:5111/api/code/",
+        "RPS_RESOURCE_URL": "http://localhost:5113/api/resource/",
+        "RPS_PRODUCT_URL": "http://localhost:5110/api/item/",
+        "RPS_PRODUCTBOM_URL": "http://localhost:5110/api/bom/",
+        "RPS_SALESORDER_URL": "http://localhost:5112/api/salesorder/",
+        "RPS_CUSTOMER_URL": "http://localhost:5108/api/customer/",
+        "RPS_LOCATION_URL": "http://localhost:5117/api/location/",
+        "RPS_ROUTE_URL": "http://localhost:5116/api/route/",
+        "RPS_INVENTORY_URL": "http://localhost:5120/api/inventory/",
+        "RPS_SCHEDULE_URL": "http://localhost:5122/api/schedule/",
+        "RPS_OPERATION_URL": "http://localhost:5115/api/operation/",
+        "RPS_CALENDAR_URL": "http://localhost:5114/api/calendar/",
+        "RPS_INTEGRATION_URL": "http://localhost:5119/",
+        "RPS_GAP_URL": "http://localhost:5125/api/cpps24/",
+        "RPS_TS_URL": "http://172.20.115.150:55443/api/notification/",
+        "RPS_DB_DPS": "Data source= 127.0.0.1\\SQLEXPRESS01,1433;Initial Catalog=SIMTech.APS.DPS;User Id=sa;Password=HMLVsa201301;",
+        "RABBITMQ_HOST": "localhost",
+        "RABBITMQ_PORT": "31672",
+        "RABBITMQ_USERNAME": "guest",
+        "RABBITMQ_PASSWORD": "guest",
+        "RABBITMQ_VHOST": "",
+        "RABBITMQ_EXCHANGE": "cpps-rps",
+        "RABBITMQ_QUEUES": "rps-schedule",
+        "RABBITMQ_ENABLE": "100",
+        "ASPNETCORE_ENVIRONMENT": "Development"
+      },
+      "dotnetRunMessages": "true",
+      "applicationUrl": "http://localhost:5000"
+    },
+    "Docker": {
+      "commandName": "Docker",
+      "launchBrowser": true,
+      "launchUrl": "{Scheme}://{ServiceHost}:{ServicePort}/swagger",
+      "publishAllPorts": true,
+      "useSSL": true
+    }
+  }
+}
