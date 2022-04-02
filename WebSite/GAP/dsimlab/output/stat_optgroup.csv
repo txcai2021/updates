@@ -1,1 +1,0 @@
-PeriodNumber,PeriodStartTime,PeriodEndTime,OperatorGroup,StartOperatorQty,EndOperatorQty,AvgOperatorQty,TotalShiftTime,TotalBreakTime,TotalBusyTime,AvgBusyTime,BUSY(%),TotalIdleTime,AvgIdleTime,IDLE(%),TotalWaitTime,AvgWaitTime,MaxWaitTime,FullfilledCount,FullfilledSum,

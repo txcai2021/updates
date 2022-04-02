@@ -1,1 +1,0 @@
-copy model_config.csv dsimlab\input\model_config.csv
