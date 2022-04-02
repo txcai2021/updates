@@ -1,0 +1,1 @@
+Id,LotID,ProductName,RouteName,Step,Substep,AltStep,EquipmentGroup,Equipment,RecipeName,StatVariable_1,StatVariable_2,StatVariable_3,WorkCenter,Reticle,FabStartTime,MoveOutFromPreOpTime,ArrivalTime,StartWaitOperatorTime,StartLoadTime,StartProcessTime,CompletedProcessTime,CompleteUnloadTime,ScrappedLotTime,WaferQty,Kanban,TimeWindowExpiryTime,LotType,EarliestStartFlag,StepSeqNr,

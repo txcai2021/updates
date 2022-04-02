@@ -1,0 +1,1 @@
+LotID,Id,ProductName,FabStartTime,CompleteTime,TotalFabCycleTime,TotalCycleTime,TotalProcTime,TotalQueueTime,TotalTravelTime,TotalHoldTime,TotalLoad/UnloadTime,StepCompleted,CurStep,ScrappedLot,StepSkippedCount,SplitCount,ReworkCount,StartWaferQty,CurrWaferQty,FabDueDate,CurrMaskLayer,Fab,DPML,LotType,ProductGroup,ProductGroup2,

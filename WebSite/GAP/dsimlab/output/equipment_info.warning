@@ -1,0 +1,8 @@
+BATCH_WAIT_BY_EARLIEST_ARRIVAL not found : error
+RESUME_PTIME not found : error
+BATCH_SIZE_TYPE not found : error
+BATCH_FORM_MARGIN not found : error
+BATCH_WAIT_TIMEOUT not found : error
+PREEMPTION not found : error
+PRELOAD_TYPE not found : error
+CASCADE_TIME not found : error

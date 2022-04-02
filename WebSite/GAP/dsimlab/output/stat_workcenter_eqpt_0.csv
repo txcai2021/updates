@@ -1,0 +1,1 @@
+PeriodNumber,PeriodStartTime,PeriodEndTime,Equipment,WorkCenter,StartedLots,StartedWafers,CompletedLots,CompletedWafers,TotalCycleTime,AvgCycleTime,StdDevCycleTime,TotalQueueTime,AvgQueueTime,StdDevQueueTime,TotalProcTime,AvgProcTime,StdDevProcessTime,
