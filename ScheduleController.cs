@@ -90,8 +90,16 @@ namespace SIMTech.APS.Scheduling.API.Controllers
         [ProducesResponseType(StatusCodes.Status201Created)]
         public async Task<ActionResult<int>> AddSchedule([FromBody] Schedule schedule)
         {
-
-            await _scheduleRepository.InsertAsync(schedule);
+            try
+            {
+                await _scheduleRepository.InsertAsync(schedule);
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine("In AddSchedule:" + e.Message);
+                if (e.InnerException !=null) Console.WriteLine("In AddSchedule:" + e.InnerException.Message );
+            }
+            
 
 
             return Ok(schedule.Id);
@@ -439,6 +447,26 @@ namespace SIMTech.APS.Scheduling.API.Controllers
 
             return Ok(pLotSize);
         }
+
+        [HttpGet("DeleteDemoData/{flag}")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        public async Task<ActionResult> DeleteDemoData(int flag)
+        {
+            var result = await _scheduleRepository.DeleteDemoData(flag);
+
+            return Ok(result);
+
+        }
+
+        //[HttpGet("DeleteDemoData")]
+        //[ProducesResponseType(StatusCodes.Status200OK)]
+        //public async Task<ActionResult> DeleteDemoData()
+        //{
+        //    var result = await _scheduleRepository.DeleteDemoData(0);
+
+        //    return Ok(result);
+
+        //}
 
 
         #endregion
