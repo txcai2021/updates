@@ -232,8 +232,10 @@ namespace SIMTech.APS.Resource.API.Controllers
                             ro.StartDate = roPM.StartDate;
                             ro.EndDate = roPM.EndDate;
                             ro.Remarks = roPM.Remarks;
+                            ro.Value = roPM.Value;
                             ro.ModifiedBy = roPM.CreatedBy;
                             ro.ModifiedOn = DateTime.Now;
+                            changed = true;
                         }
                     }
 
