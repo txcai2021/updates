@@ -10,3 +10,6 @@ git push -u origin main
 git remote add origin https://github.com/txcai2021/updates.git
 git branch -M main
 git push -u origin main
+
+ git config --global user.name "txcai2021"
+ git config --global user.email "tianxiang@gmail.com"
