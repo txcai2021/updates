@@ -359,6 +359,31 @@ namespace SIMTech.APS.WorkOrder.API.Controllers
             return woIds;        
         }
 
+        [HttpGet("WorkOrderNumbers/{salesOrderDetailIds}")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public async Task<ActionResult<List<WorkOrderCreationDetails>>> GetWorkOrders(string salesOrderDetailIds)
+        {
+
+             var details = new List<WorkOrderCreationDetails>() ;
+
+
+            foreach (var sol in salesOrderDetailIds.Split(","))
+            {
+                int id = 0;
+                if (int.TryParse(sol, out id))
+                {
+                    var woIds = (await _workOrderDetailRepository.GetQueryAsync(x => x.SalesOrderLineId == id)).Select(x => x.WorkOrderId).ToList();
+                    var wos = (await _workOrderRepository.GetQueryAsync(x => woIds.Contains(x.Id))).Select(x => x.WorkOrderNumber).ToList();
+                    var wodet = new WorkOrderCreationDetails() { SalesOrderDetailId = id, WorkOrderNumbers = wos };
+                    details.Add(wodet);
+
+                }    
+            }
+           
+            return details;
+        }
+
 
 
 

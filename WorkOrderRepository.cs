@@ -50,7 +50,8 @@ namespace SIMTech.APS.WorkOrder.API.Repository
                         break;
                     case EWorkOrderCategory.WIP:                       
                         //workOrders = workOrders.Where(wo => wo.Int3 == null && (role == 0 || userList.Contains(wo.String7))).OrderBy(x => x.DueDate).ThenBy(x => x.WorkOrderNumber);
-                        workOrders = workOrders.Where(wo => (wo.Status == (byte)EWorkOrderStatus.Processing || wo.Status == (byte)EWorkOrderStatus.Queuing )&& (role == 0 || userList.Contains(wo.String7))).OrderBy(x => x.DueDate).ThenBy(x => x.WorkOrderNumber);
+                        //workOrders = workOrders.Where(wo => (wo.Status == (byte)EWorkOrderStatus.Processing || wo.Status == (byte)EWorkOrderStatus.Queuing )&& (role == 0 || userList.Contains(wo.String7))).OrderBy(x => x.DueDate).ThenBy(x => x.WorkOrderNumber);
+                        workOrders = workOrders.Where(wo => wo.Status != (byte)EWorkOrderStatus.Completed && (role == 0 || userList.Contains(wo.String7))).OrderBy(x => x.DueDate).ThenBy(x => x.WorkOrderNumber);
                         break;
                     default:                  
                         workOrders = workOrders.Where(wo => role == 0 || userList.Contains(wo.String7)).OrderBy(x => x.DueDate).ThenBy(x => x.WorkOrderNumber);                      
@@ -69,7 +70,7 @@ namespace SIMTech.APS.WorkOrder.API.Repository
                             break;
                         case EWorkOrderCategory.WIP:
                             //workOrders = workOrders.Where(wo => wo.Int3 == null && (role == 0 || userList.Contains(wo.String7))).OrderBy(x => x.DueDate).ThenBy(x => x.WorkOrderNumber);
-                            workOrders = workOrders.Where(wo => (wo.Status == (byte)EWorkOrderStatus.Processing || wo.Status == (byte)EWorkOrderStatus.Queuing) && (role == 0 || userList.Contains(wo.String7))).OrderByDescending(x => x.WorkOrderNumber);
+                            workOrders = workOrders.Where(wo => wo.Status != (byte)EWorkOrderStatus.Completed && (role == 0 || userList.Contains(wo.String7))).OrderByDescending(x => x.WorkOrderNumber);
                             break;
                         default:
                             workOrders = workOrders.Where(wo => role == 0 || userList.Contains(wo.String7)).OrderByDescending(x => x.WorkOrderNumber);
@@ -86,7 +87,7 @@ namespace SIMTech.APS.WorkOrder.API.Repository
                             break;
                         case EWorkOrderCategory.WIP:
                             //workOrders = workOrders.Where(wo => wo.Int3 == null && (role == 0 || userList.Contains(wo.String7))).OrderBy(x => x.DueDate).ThenBy(x => x.WorkOrderNumber);
-                            workOrders = workOrders.Where(wo => (wo.Status == (byte)EWorkOrderStatus.Processing || wo.Status == (byte)EWorkOrderStatus.Queuing) && (role == 0 || userList.Contains(wo.String7))).OrderBy(x => x.WorkOrderNumber);
+                            workOrders = workOrders.Where(wo => wo.Status != (byte)EWorkOrderStatus.Completed && (role == 0 || userList.Contains(wo.String7))).OrderBy(x => x.WorkOrderNumber);
                             break;
                         default:
                             workOrders = workOrders.Where(wo => role == 0 || userList.Contains(wo.String7)).OrderBy(x => x.WorkOrderNumber);
