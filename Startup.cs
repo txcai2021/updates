@@ -17,12 +17,12 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Cors.Infrastructure;
 
-
-namespace SIMTech.APS.Resource.API
+namespace SIMTech.APS.Operation.API
 {
     public class Startup
     {
         readonly string MyAllowSpecificOrigins = "_myAllowSpecificOrigins";
+
         public Startup(IConfiguration configuration)
         {
             Configuration = configuration;
@@ -34,25 +34,38 @@ namespace SIMTech.APS.Resource.API
         public void ConfigureServices(IServiceCollection services)
         {
 
+
             services.AddControllers();
+
+            //services.AddControllers(options =>
+            //{
+            //    options.OutputFormatters.RemoveType<SystemTextJsonOutputFormatter>();
+            //    options.OutputFormatters.Add(new SystemTextJsonOutputFormatter(new JsonSerializerOptions(JsonSerializerDefaults.Web)
+            //    {
+            //        ReferenceHandler = ReferenceHandler.Preserve,
+            //    }));
+            //});
+
             services.AddSwaggerGen(c =>
             {
-                c.SwaggerDoc("v1", new OpenApiInfo { Title = "SIMTech.APS.Resource.API", Version = "v1" });
+                c.SwaggerDoc("v1", new OpenApiInfo { Title = "SIMTech.APS.Operation.API", Version = "v1" });
             });
 
-            var dbConnetionString = Environment.GetEnvironmentVariable("RPS_DB_RESOURCE");
+            var dbConnetionString = Environment.GetEnvironmentVariable("RPS_DB_OPERATION");
 
             if (dbConnetionString != null && dbConnetionString.Length > 150)
             {
-                var wrapper = new SIMTech.APS.Utilities.DataProtection("#RPS_DB_RESOURCE#");
+                var wrapper = new SIMTech.APS.Utilities.DataProtection("#RPS_DB_OPERATION#");
                 dbConnetionString = wrapper.DecryptData(dbConnetionString);
             }
-            services.AddDbContext<DBContext.ResourceContext>(o => o.UseSqlServer(dbConnetionString).UseLazyLoadingProxies());
+            services.AddDbContext<DBContext.OperationContext>(o => o.UseSqlServer(dbConnetionString));
+            //services.AddDbContext<DBContext.OperationContext>(o => o.UseSqlServer(Environment.GetEnvironmentVariable("RPS_DB_OPERATION")));
 
-            //services.AddDbContext<DBContext.ResourceContext>(o => o.UseSqlServer(Environment.GetEnvironmentVariable("RPS_DB_RESOURCE")).UseLazyLoadingProxies());
-            services.AddScoped<Repository.IResourceRepository, Repository.ResourceRepository>();
-            services.AddScoped<Repository.IResourceBlockoutRepository, Repository.ResourceBlockoutRepository>();
-            services.AddScoped<Repository.IResourceParameterRepository, Repository.ResourceParameterRepository>();
+            services.AddScoped<Repository.IOperationRepository, Repository.OperationRepository>();
+            services.AddScoped<Repository.IOperationResourceRepository, Repository.OperationResourceRepository>();
+            services.AddScoped<Repository.IOperationParameterRepository, Repository.OperationParameterRepository>();
+            services.AddScoped<Repository.IOperationRateRepository, Repository.OperationRateRepository>();
+            services.AddScoped<Repository.IParameterRepository, Repository.ParameterRepository>();
 
             services.AddCors(c =>
             {
@@ -60,7 +73,7 @@ namespace SIMTech.APS.Resource.API
                 c.AddPolicy(name: MyAllowSpecificOrigins,
                                   builder =>
                                   {
-                                      builder.WithOrigins(Environment.GetEnvironmentVariable("RPS_UI_URL"))
+                                      builder.WithOrigins(Environment.GetEnvironmentVariable("RPS_UI_URL"))                  
                                         .AllowAnyHeader()
                                                   .AllowAnyMethod();
                                   });
@@ -75,12 +88,12 @@ namespace SIMTech.APS.Resource.API
             {
                 app.UseDeveloperExceptionPage();
                 app.UseSwagger();
-                app.UseSwaggerUI(c => c.SwaggerEndpoint("/swagger/v1/swagger.json", "SIMTech.APS.Resource.API v1"));
+                app.UseSwaggerUI(c => c.SwaggerEndpoint("/swagger/v1/swagger.json", "SIMTech.APS.Operation.API v1"));
             }
 
             //app.UseCors(options => options.AllowAnyOrigin());
-
             app.UseCors(MyAllowSpecificOrigins);
+
 
             app.UseHttpsRedirection();
 
@@ -94,5 +107,5 @@ namespace SIMTech.APS.Resource.API
             });
         }
     }
-
 }
+
