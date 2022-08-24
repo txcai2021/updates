@@ -49,6 +49,16 @@ namespace SIMTech.APS.Product.API.Controllers
             return ItemMapper.ToPartTypes(items);
         }
 
+        [HttpGet]
+        [Route("IdName/{ItemIds}")]
+        public List<BasePM> GetItemsIdName(string ItemIds)
+        {
+            var Ids = ItemIds.Split(",").Select(x => Int32.Parse(x)).ToList();
+
+            IQueryable<Item> items = _exceptionManager.Process(() => _itemRepository.GetQuery(i => Ids.Contains (i.Id)), "ExceptionShielding");
+            return items.Select(kt => new BasePM() { Id = kt.Id, Name = kt.ItemName, Description = kt.Description, Value = (kt.Int7??0).ToString () }).OrderBy(kt => kt.Name).ToList();
+        }
+
         [HttpGet("DB/{itemIds}")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         public async Task<ActionResult<IEnumerable<Item>>> GetItemList(string itemIds)
@@ -220,8 +230,8 @@ namespace SIMTech.APS.Product.API.Controllers
         [Route("Assembly/IdName")]
         public List<BasePM> GetKitTypesIdName()
         {
-            IEnumerable<Item> kitTypes = _itemRepository.GetQuery(i => i.Category.Equals("ProductHierarchyLevelR")).ToList();
-            return kitTypes.Select(GetCustomersForKitType).Select(kt => new BasePM() { Id = kt.Id, Name = kt.Name, Description = kt.Description }).OrderBy(kt => kt.Name).ToList();          
+            IQueryable<Item> kitTypes = _itemRepository.GetQuery(i => i.Category.Equals("ProductHierarchyLevelR"));
+            return kitTypes.Select(kt => new BasePM() { Id = kt.Id, Name = kt.ItemName, Description = kt.Description }).OrderBy(bp => bp.Name).ToList();          
         }
 
         [HttpGet]
@@ -446,8 +456,8 @@ namespace SIMTech.APS.Product.API.Controllers
         [Route("Part/IdName")]
         public List<BasePM> GetPartTypesIdName()
         {
-            IEnumerable<Item> partTypes = _exceptionManager.Process(() => _itemRepository.GetQuery(i => i.Category.Equals("ProductHierarchyLevelB")), "ExceptionShielding").ToList();
-            return partTypes.Select(GetCustomersForPartType).Select (kt=>new BasePM() {Id=kt.Id,Name =kt.Name , Description =kt.Description }).OrderBy(kt => kt.Name).ToList ();
+            IQueryable<Item> partTypes = _exceptionManager.Process(() => _itemRepository.GetQuery(i => i.Category.Equals("ProductHierarchyLevelB")), "ExceptionShielding");
+            return partTypes.Select (kt=>new BasePM() {Id=kt.Id,Name =kt.ItemName , Description =kt.Description }).OrderBy(kt => kt.Name).ToList ();
         }
 
         [HttpGet]
@@ -861,20 +871,35 @@ namespace SIMTech.APS.Product.API.Controllers
             IEnumerable<Item> rawMaterials = _exceptionManager.Process(() => _itemRepository.GetQuery(i => i.Category.Equals("RawMaterial")), "ExceptionShielding").ToList();
             //return RawMaterialMapper.ToPresentationModels(rawMaterials).ToList();
             var rawMaterialPMs = RawMaterialMapper.ToPresentationModels(rawMaterials).ToList();
-            foreach (var rawMaterialPM in rawMaterialPMs )
+
+            var rawMaterialIdNames = new List<IdNamePM>();
+            foreach (var rawMaterialPM in rawMaterialPMs)
             {
-                var a= ApiGetMaterialBalanceQuantity(new IdNamePM() { Id = rawMaterialPM.Id });
-                if (a!=null)
-                {
-                    rawMaterialPM.BalanceQuantity = a.Int1;
-                    rawMaterialPM.RequiredQuantity = a.Int2;
-                }                  
+                rawMaterialIdNames.Add (new IdNamePM() { Id = rawMaterialPM.Id });              
             }
 
+            var rawMaterialQuantities = ApiGetMaterialBalanceQuantities(rawMaterialIdNames);
+            foreach (var rawMaterialPM in rawMaterialPMs)
+            {
+                var a= rawMaterialQuantities.Where(x => x.Id == rawMaterialPM.Id).FirstOrDefault();
+                if (a != null)
+                {
+                    rawMaterialPM.BalanceQuantity = a.Int1;
+                    rawMaterialPM.RequiredQuantity = a.Int2;                   
+                }
+            }
+
+            //foreach (var rawMaterialPM in rawMaterialPMs )
+            //{
+            //    var a= ApiGetMaterialBalanceQuantity(new IdNamePM() { Id = rawMaterialPM.Id });
+            //    if (a!=null)
+            //    {
+            //        rawMaterialPM.BalanceQuantity = a.Int1;
+            //        rawMaterialPM.RequiredQuantity = a.Int2;
+            //    }                  
+            //}
+
             return rawMaterialPMs;
-
-
-
         }
 
         [HttpGet]
@@ -1724,6 +1749,30 @@ namespace SIMTech.APS.Product.API.Controllers
             }
 
             return invMaterial;
+        }
+
+        private List<IdNamePM> ApiGetMaterialBalanceQuantities(List<IdNamePM> materials)
+        {
+            List<IdNamePM> invMaterials = new List<IdNamePM>();
+            var apiBaseUrl = Environment.GetEnvironmentVariable("RPS_INVENTORY_URL");
+
+            if (!string.IsNullOrWhiteSpace(apiBaseUrl) && materials.Count > 0)
+            {
+              
+                try
+                {
+                    var task = HttpHelper.PostAsync<List<IdNamePM>, List<IdNamePM>>(apiBaseUrl, "BalanceQuantities", materials);
+                    task.Wait();
+                    invMaterials = task.Result;
+                }
+                catch (Exception e)
+                {
+                    Console.WriteLine(e.Message);
+                    if (e.InnerException != null) Console.WriteLine(e.Message);
+                }
+            }
+
+            return invMaterials;
         }
 
 

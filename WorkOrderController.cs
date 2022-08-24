@@ -29,6 +29,7 @@ namespace SIMTech.APS.WorkOrder.API.Controllers
     using SIMTech.APS.SalesOrder.API.Enums;   
     using SIMTech.APS.Models;
     using SIMTech.APS.Utilities;
+    using SIMTech.APS.WorkOrder.API.Enums;
 
     [Route("api/[controller]")]
     [ApiController]
@@ -63,7 +64,13 @@ namespace SIMTech.APS.WorkOrder.API.Controllers
         public async Task<ActionResult<IEnumerable<WorkOrderPM>>> GetWorkOrders()
         {
 
-            await _workOrderRepository.UpdateWorkOrderStatus();
+            var updateStatus = ApiGetOptionSettingByName("UpdateWorkOrderStatus");
+
+            if (updateStatus == "T")
+            {
+                await _workOrderRepository.UpdateWorkOrderStatus();
+            }
+
 
             var workOrders = await _workOrderRepository.GetWorkOrders();
 
@@ -93,6 +100,12 @@ namespace SIMTech.APS.WorkOrder.API.Controllers
 
             var sortBy = ApiGetOptionSettingByName("WO_SortOrderByDueDate");
             var sortOrder = ApiGetOptionSettingByName("WO_SortOrder");
+            var updateStatus = ApiGetOptionSettingByName("UpdateWorkOrderStatus");
+
+            if (updateStatus == "T" && category!= (int)EWorkOrderCategory.Completed)
+            {
+                await _workOrderRepository.UpdateWorkOrderStatus();
+            }
 
             var workOrders = await _workOrderRepository.GetWorkOrdersByCategory((EWorkOrderCategory) category,sortBy=="T", sortOrder=="D",role,userList);
 
