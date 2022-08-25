@@ -43,7 +43,9 @@ namespace SIMTech.APS.SalesOrder.API.Controllers
         public IEnumerable<SalesOrderPM> GetAllSalesOrders()
         {
             //var salesOrders = _salesOrderRepository.GetQuery(x => x.Id > 0).OrderBy(x => x.SalesOrderNumber).ToList();
-            var salesOrders = _salesOrderRepository.GetQuery(x => x.Id > 0).OrderByDescending(x => x.CreatedOn).ToList();
+            //var salesOrders = _salesOrderRepository.GetQuery(x => x.Id > 0).OrderByDescending(x => x.CreatedOn).ToList();
+
+            var salesOrders = _salesOrderRepository.GetSalesOrders();
 
             var salesOrdersPM= SalesOrderMapper.ToPresentationModels(salesOrders).ToList ();
 
@@ -59,8 +61,10 @@ namespace SIMTech.APS.SalesOrder.API.Controllers
                     var customer = customers.Where(x => x.Id == so.CustomerId).FirstOrDefault();
                     if (customer != null) so.CustomerName = customer.Code;
                 }
-                        
-                so.SalesOrderLines= GetSalesOrderLines(so.Id,false).ToList ();               
+
+                //so.SalesOrderLines= GetSalesOrderLines(so.Id,false).ToList ();
+                var so1 = salesOrders.First(x => x.Id == so.Id);
+                so.SalesOrderLines =  SalesOrderLineMapper.ToPresentationModels(so1.SalesOrderDetails).ToList(); ;
             }
 
             
