@@ -13,11 +13,14 @@ namespace SIMTech.APS.SalesOrder.API.Repository
         private readonly SalesOrderContext _dbContext;
         public SalesOrderRepository(SalesOrderContext context) : base(context) { _dbContext = context; }
 
-        public IEnumerable<SalesOrder> GetSalesOrders()
+        public IEnumerable<SalesOrder> GetSalesOrders(int salesOrderId =0)
         {
-            var salesOrders = _dbContext.SalesOrders.Include(s => s.SalesOrderDetails).Where(s=>s.Id>0 ).OrderByDescending(x => x.CreatedOn).ToList();
 
-            return salesOrders;
+            var salesOrders = _dbContext.SalesOrders.Include(s => s.SalesOrderDetails).Where (s=>s.Id>0);
+
+            if (salesOrderId > 0) salesOrders= salesOrders.Where(x => x.Id == salesOrderId);
+
+            return salesOrders.OrderByDescending(x => x.CreatedOn).ToList();
         }
 
     }

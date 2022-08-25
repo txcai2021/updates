@@ -194,10 +194,17 @@ namespace SIMTech.APS.SalesOrder.API.Controllers
         [Route("SODetails/{soId}")]
         public IQueryable<SalesOrderLinePM> GetSalesOrderLines(int soId, bool salesOrderDetail=true)
         {
-            IEnumerable<SalesOrderDetail> salesOrderDetails = _exceptionManager.Process(() => _salesOrderDetailRepository.GetQuery(so => so.SalesOrderId == soId), "ExceptionShielding");
-            var sols= SalesOrderLineMapper.ToPresentationModels(salesOrderDetails).ToList();
+            //IEnumerable<SalesOrderDetail> salesOrderDetails = _exceptionManager.Process(() => _salesOrderDetailRepository.GetQuery(so => so.SalesOrderId == soId), "ExceptionShielding");
 
-           
+            var so = _salesOrderRepository.GetSalesOrders(soId).FirstOrDefault();
+
+            var sols = new List<SalesOrderLinePM>();
+
+            if (so != null)
+            {
+                sols = SalesOrderLineMapper.ToPresentationModels(so.SalesOrderDetails).ToList();
+            }
+            
 
             if (salesOrderDetail)
             {
@@ -216,8 +223,9 @@ namespace SIMTech.APS.SalesOrder.API.Controllers
                         //sol.LotSize = product.LotSize;
                         sol.LotSize = Int32.Parse(product.Value);
                     }
-                    var so = _salesOrderRepository.GetById(sol.SalesOrderId);
-                    if (so != null) sol.SalesOrderNumber = so.SalesOrderNumber;
+                    //var so = _salesOrderRepository.GetById(sol.SalesOrderId);
+                    //if (so != null) sol.SalesOrderNumber = so.SalesOrderNumber;
+                    sol.SalesOrderNumber = so.SalesOrderNumber;
                 }
 
             }
@@ -230,7 +238,8 @@ namespace SIMTech.APS.SalesOrder.API.Controllers
         [Route("SODetail/{soLineId}")]
         public SalesOrderLinePM GetSalesOrderLine(int soLineId)
         {
-            var salesOrderDetail = _exceptionManager.Process(() => _salesOrderDetailRepository.GetQuery(so => so.Id == soLineId).FirstOrDefault(), "ExceptionShielding");
+            //var salesOrderDetail = _exceptionManager.Process(() => _salesOrderDetailRepository.GetQuery(so => so.Id == soLineId).FirstOrDefault(), "ExceptionShielding");
+            var salesOrderDetail =  _salesOrderDetailRepository.GetSalesOrderLine(soLineId);
             var sol = SalesOrderLineMapper.ToPresentationModel(salesOrderDetail);
 
             
@@ -242,8 +251,9 @@ namespace SIMTech.APS.SalesOrder.API.Controllers
                 sol.ProductName = product.Description;
                 sol.LotSize = product.LotSize;
             }
-            var so = _salesOrderRepository.GetById(sol.SalesOrderId);
-            if (so != null) sol.SalesOrderNumber = so.SalesOrderNumber;
+            //var so = _salesOrderRepository.GetById(sol.SalesOrderId);
+            //if (so != null) sol.SalesOrderNumber = so.SalesOrderNumber;
+            sol.SalesOrderNumber = salesOrderDetail.s.SalesOrderNumber;
 
 
             return sol;

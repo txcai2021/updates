@@ -6,6 +6,6 @@ namespace SIMTech.APS.SalesOrder.API.Repository
     using SIMTech.APS.Repository;
     public interface ISalesOrderRepository : IRepository<SalesOrder>
     {
-        public IEnumerable<SalesOrder> GetSalesOrders();
+        public IEnumerable<SalesOrder> GetSalesOrders(int salesOrderId=0);
     }
 }
