@@ -764,6 +764,27 @@ namespace SIMTech.APS.WorkOrder.API.Controllers
             return Ok(materialShortages);
         }
 
+        [HttpGet("MaterialsShortage/{materialIds}")]
+        [Consumes(MediaTypeNames.Application.Json)]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        public async Task<ActionResult<List<IdNamePM>>> GetMaterialsShortage(string materialIds)
+        {
+            var materialShortages = new List<IdNamePM>();
+
+            var matIds = materialIds.Split(",").Select(x => Int32.Parse(x)).ToList();
+
+            var woMaterials = await _workOrderMaterialRepository.GetQuery(a => matIds.Contains(a.MaterialId) && !(a.Availability ?? false) && (byte)a.WorkOrder.Status <= (byte)EWorkOrderStatus.Queuing).ToListAsync();
+
+
+
+            foreach (var woMaterial in woMaterials.OrderBy(x=>x.MaterialId).ThenBy(x => x.WorkOrderId))
+            {
+                materialShortages.Add(new IdNamePM() { Id = woMaterial.MaterialId, Int1 = woMaterial.WorkOrderId, Float1 = woMaterial.Quantity });
+            }
+
+            return Ok(materialShortages);
+        }
+
         [HttpPost("Status")]
         [Consumes(MediaTypeNames.Application.Json)]
         [ProducesResponseType(StatusCodes.Status200OK)]

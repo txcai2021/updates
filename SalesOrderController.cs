@@ -253,7 +253,7 @@ namespace SIMTech.APS.SalesOrder.API.Controllers
             }
             //var so = _salesOrderRepository.GetById(sol.SalesOrderId);
             //if (so != null) sol.SalesOrderNumber = so.SalesOrderNumber;
-            sol.SalesOrderNumber = salesOrderDetail.s.SalesOrderNumber;
+            sol.SalesOrderNumber = salesOrderDetail.SalesOrder.SalesPersonName;
 
 
             return sol;
