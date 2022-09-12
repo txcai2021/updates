@@ -29,7 +29,7 @@ namespace SIMTech.APS.WorkOrder.API.Controllers
     using SIMTech.APS.SalesOrder.API.Enums;   
     using SIMTech.APS.Models;
     using SIMTech.APS.Utilities;
-    using SIMTech.APS.WorkOrder.API.Enums;
+    //using SIMTech.APS.WorkOrder.API.Enums;
 
     [Route("api/[controller]")]
     [ApiController]
@@ -47,6 +47,13 @@ namespace SIMTech.APS.WorkOrder.API.Controllers
         private int _defaultWOLen = 45;
         private int _lotSize;
         private double _remainingQty;
+        private List<IdNamePM> _items = new List<IdNamePM>();
+        private List<BasePM> _customers = new List<BasePM>();
+        private List<BasePM> _locations = new List<BasePM>();
+        private List<BasePM> _routings = new List<BasePM>();     
+        private List<BasePM> _displayNames = new List<BasePM>();
+        private List<SalesOrderPM> _salesOrder = new List<SalesOrderPM>();
+
 
         public WorkOrderController(IWorkOrderRepository workOrderRepository, IWorkOrderDetailRepository workOrderDetailRepository, IWorkOrderMaterialRepository workOrderMaterialRepository)
         {
@@ -74,7 +81,11 @@ namespace SIMTech.APS.WorkOrder.API.Controllers
 
             var workOrders = await _workOrderRepository.GetWorkOrders();
 
+            GetAllAddtitionalDataFromOtherServices(workOrders.ToList ());
+
             var workOrderPMs = WorkOrderMapper.ToPresentationModels(workOrders).ToList();
+
+          
 
             foreach (var workOrderPm in workOrderPMs)
             {
@@ -93,32 +104,49 @@ namespace SIMTech.APS.WorkOrder.API.Controllers
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<ActionResult<IEnumerable<WorkOrderPM>>> GetWorkOrdersByCategory(int category)
         {
-
+            var st = DateTime.Now;
+            Console.WriteLine("GetWorkOrder started at " + st.ToString ());
             var userList = new List<string>();
             //int role = GetUserRole(userList);
             int role = 0;
 
+            var st1 = DateTime.Now;
             var sortBy = ApiGetOptionSettingByName("WO_SortOrderByDueDate");
             var sortOrder = ApiGetOptionSettingByName("WO_SortOrder");
             var updateStatus = ApiGetOptionSettingByName("UpdateWorkOrderStatus");
+            Console.WriteLine("Duration for Setting " + (DateTime.Now- st1).TotalSeconds.ToString());
 
+
+
+            st1 = DateTime.Now;
             if (updateStatus == "T" && category!= (int)EWorkOrderCategory.Completed)
             {
                 await _workOrderRepository.UpdateWorkOrderStatus();
+                Console.WriteLine("Duration for updating work order status " + (DateTime.Now - st1).TotalSeconds.ToString());
             }
 
+            st1 = DateTime.Now;
             var workOrders = await _workOrderRepository.GetWorkOrdersByCategory((EWorkOrderCategory) category,sortBy=="T", sortOrder=="D",role,userList);
+            Console.WriteLine("Duration for retrieving work orders from DB " + (DateTime.Now - st1).TotalSeconds.ToString());
 
             var workOrderPMs = WorkOrderMapper.ToPresentationModels(workOrders).ToList();
 
+            st1 = DateTime.Now;
+            GetAllAddtitionalDataFromOtherServices(workOrders.ToList());
+            Console.WriteLine("Duration for getting all additional data using APIs " + (DateTime.Now - st1).TotalSeconds.ToString());
+
+            st1 = DateTime.Now;
             foreach (var workOrderPm in workOrderPMs)
             {
-
                 AssignAdditionalInformaitonForWorkOrder(workOrderPm);
             }
 
             AssignPOnumberForChildWorkOrders(workOrderPMs);
+            Console.WriteLine("Duration for assigning additional info " + (DateTime.Now - st1).TotalSeconds.ToString());
 
+
+            var et = DateTime.Now;
+            Console.WriteLine("GetWorkOrder ended at " + et.ToString() +" Duration(seconds):" +(et-st).TotalSeconds.ToString ());
 
             return workOrderPMs;
         }
@@ -207,7 +235,7 @@ namespace SIMTech.APS.WorkOrder.API.Controllers
             //var items = _exceptionManager.Process(() => _productRepository.GetQuery<Item>(x => itemIds.Contains(x.ItemID)), "ExceptionShielding").ToList();
             //var routes = _exceptionManager.Process(() => _processRepository.GetQuery<Route>(x => routeIds.Contains(x.RouteId)), "ExceptionShielding").ToList();
 
-
+            GetAllAddtitionalDataFromOtherServices(workOrders.ToList());
 
             var workOrderPms = WorkOrderMapper.ToPresentationModels(workOrders).ToList();
 
@@ -296,6 +324,8 @@ namespace SIMTech.APS.WorkOrder.API.Controllers
                 }
             }
 
+            GetAllAddtitionalDataFromOtherServices(workOrders.ToList());
+
             var workOrderPms = WorkOrderMapper.ToPresentationModels(workOrders).ToList();
 
             foreach (WorkOrderPM workOrderPm in workOrderPms)
@@ -317,14 +347,16 @@ namespace SIMTech.APS.WorkOrder.API.Controllers
         public async Task<ActionResult<WorkOrderPM>> GetWorkOrder(int id)
         {
             
-            var workOrder = await _workOrderRepository.GetWorkOrders(id);
+            var workOrder = await _workOrderRepository.GetWorkOrders(id);           
 
             if (workOrder == null)
             {
                 return NotFound();
             }
 
-            var workOrderPM = WorkOrderMapper.ToPresentationModel(workOrder.First());         
+            var workOrderPM = WorkOrderMapper.ToPresentationModel(workOrder.First());
+
+            GetAllAddtitionalDataFromOtherServices(workOrder.ToList());
 
             AssignAdditionalInformaitonForWorkOrder(workOrderPM);
 
@@ -350,6 +382,8 @@ namespace SIMTech.APS.WorkOrder.API.Controllers
             }
 
             var workOrderPms = WorkOrderMapper.ToPresentationModels(workOrders).ToList();
+
+            GetAllAddtitionalDataFromOtherServices(workOrders.ToList());
 
             foreach (WorkOrderPM workOrderPm in workOrderPms)
             {
@@ -1566,15 +1600,20 @@ namespace SIMTech.APS.WorkOrder.API.Controllers
             if (workOrderPm.Status >= EWorkOrderStatus.Completed)
             {             
                 workOrderPm.CompletedQuantity = ApiCompletedQuantity(workOrderPm.Id);
+                if (workOrderPm.CompletedQuantity == 0) workOrderPm.CompletedQuantity = workOrderPm.Quantity;
             }
 
-            var product = ApiGetProduct(workOrderPm.ProductId);
+            //var product = ApiGetProduct(workOrderPm.ProductId);
+            var product = _items.FirstOrDefault(x=>x.Id == workOrderPm.ProductId);
             if (product != null)
             {
                 workOrderPm.ProductName = product.Description;
                 workOrderPm.ProductNo = product.Name;
-                workOrderPm.ProductionYield = (decimal?)product.ProductionYield;
-                workOrderPm.ProductFamily = product.PartFamily;
+                //workOrderPm.ProductionYield = (decimal?)product.ProductionYield;
+                //workOrderPm.ProductFamily = product.PartFamily;
+                workOrderPm.ProductionYield = (decimal?)product.Float1;
+                workOrderPm.ProductFamily = product.String1;
+
             }
 
             if (workOrderPm.ParentWorkOrderId!=null && workOrderPm.ParentWorkOrderId >0)
@@ -1582,7 +1621,8 @@ namespace SIMTech.APS.WorkOrder.API.Controllers
                 var parentWO=_workOrderRepository.GetById(workOrderPm.ParentWorkOrderId??0);
                 if (parentWO!=null && parentWO.ProductId>0 )
                 {
-                    var assembly = ApiGetProduct(parentWO.ProductId);
+                    //var assembly = ApiGetProduct(parentWO.ProductId);
+                    var assembly = _items.FirstOrDefault(x => x.Id == parentWO.ProductId);
                     if (assembly != null)
                     {
                         workOrderPm.AssemblyNo = assembly.Name;
@@ -1596,8 +1636,11 @@ namespace SIMTech.APS.WorkOrder.API.Controllers
 
             if (workOrderPm.RouteId != null)
             {
-                //Route route = _exceptionManager.Process(() => _processRepository.GetByKey<Route>(workOrderPm.RouteId), "ExceptionShielding");
-                var route = ApiGetRoute(workOrderPm.RouteId??0);
+                
+                //var route = ApiGetRoute(workOrderPm.RouteId??0);
+
+                var route = _routings.FirstOrDefault(x => x.Id == (workOrderPm.RouteId ?? 0));
+
                 if (route != null )
                 {
                    workOrderPm.RouteName = route.Name;
@@ -1609,12 +1652,14 @@ namespace SIMTech.APS.WorkOrder.API.Controllers
 
             if (workOrderPm.LocationId!=null)
             {
-                workOrderPm.Location = ApiGetLocation(workOrderPm.LocationId??0);
+                //workOrderPm.Location = ApiGetLocation(workOrderPm.LocationId??0);           
+                workOrderPm.Location = _locations.FirstOrDefault(x => x.Id == (workOrderPm.LocationId ?? 0));
             }
 
             if (workOrderPm.CustomerId != null)
             {
-                workOrderPm.Customer = ApiGetCustomer(workOrderPm.CustomerId??0);
+                //workOrderPm.Customer = ApiGetCustomer(workOrderPm.CustomerId??0);
+                workOrderPm.Customer = _customers.FirstOrDefault(x => x.Id == (workOrderPm.CustomerId ?? 0));
             }
 
             if (workOrderPm.LinkWorkOrderId != null)
@@ -1623,13 +1668,19 @@ namespace SIMTech.APS.WorkOrder.API.Controllers
                 if (linkWorkOrder != null) workOrderPm.LinkWorkOrderNumber = linkWorkOrder.WorkOrderNumber;
             }
 
-            var displayName =ApiGetDisplayName(workOrderPm.CreatedBy);           
+            //var displayName =ApiGetDisplayName(workOrderPm.CreatedBy);
+            var displayName = workOrderPm.CreatedBy;
+            var a =_displayNames.FirstOrDefault(x => x.Code == workOrderPm.CreatedBy);
+            if (a != null) displayName = a.Name;
             if (!string.IsNullOrWhiteSpace(displayName)) workOrderPm.CreatedBy = displayName;
 
 
             if (!string.IsNullOrWhiteSpace(workOrderPm.ReleasedBy))
-            { 
-                displayName = ApiGetDisplayName(workOrderPm.ReleasedBy);
+            {
+                //displayName = ApiGetDisplayName(workOrderPm.ReleasedBy);
+                displayName = workOrderPm.ReleasedBy;
+                a = _displayNames.FirstOrDefault(x => x.Code == workOrderPm.ReleasedBy);
+                if (a != null) displayName = a.Name;
                 if (!string.IsNullOrWhiteSpace(displayName)) workOrderPm.ReleasedBy = displayName;              
             }
 
@@ -1639,42 +1690,42 @@ namespace SIMTech.APS.WorkOrder.API.Controllers
                 WorkOrderLinePM pm = workOrderLinePM;
                 if (pm.SalesOrderLineId != null)
                 {
-                    var sol = ApiGetSalesOrderLine(pm.SalesOrderLineId??0);
-                    if (sol !=null)
+                    //var sol = ApiGetSalesOrderLine(pm.SalesOrderLineId??0);
+                    var so = _salesOrder.FirstOrDefault(x => x.SalesOrderLines.Any(y => y.Id == (pm.SalesOrderLineId ?? 0)));
+                    SalesOrderLinePM sol = null;
+                    if ( so != null)
                     {
-                        var so = ApiGetSalesOrder(sol.SalesOrderId);
+                         sol = so.SalesOrderLines.FirstOrDefault(y => y.Id == (pm.SalesOrderLineId ?? 0));
+                    }
+                   
+                    if (so!=null && sol !=null )
+                    {
+                        workOrderLinePM.SalesOrderNumber = so.SalesOrderNumber;
+                        workOrderLinePM.SalesOrderLineNumber = sol.LineNumber ?? 0;
 
-                        if (so != null)
+                        workOrderPm.PONumbers = string.IsNullOrWhiteSpace(workOrderPm.PONumbers) ? so.SalesOrderNumber : workOrderPm.PONumbers + "; " + so.SalesOrderNumber;
+                        workOrderPm.ContactPersonName = so.ContactPersonName;
+                        workOrderPm.ContactNo = so.ContactNo;
+                        workOrderPm.LineNo = sol.LineNumber ?? 0;
+                        workOrderPm.PORemarks = sol.Remarks;
+                        workOrderPm.ServerFileName = sol.SeverFileName;
+                        workOrderPm.FileName = sol.ThumbnailImageFileName;
+                        workOrderPm.CommittedDeliveryDate = ((DateTime)sol.DueDate).ToString("dd/MM/yyyy");
+
+                        workOrderPm.address2 = so.Comment;
+
+                        if (sol.UrgentFlag == EWorkOrderUrgentFlag.Urgent)
                         {
-                            workOrderLinePM.SalesOrderNumber = so.SalesOrderNumber;
-                            workOrderLinePM.SalesOrderLineNumber = sol.LineNumber ?? 0;
-
-                            workOrderPm.PONumbers = string.IsNullOrWhiteSpace(workOrderPm.PONumbers) ? so.SalesOrderNumber : workOrderPm.PONumbers + "; " + so.SalesOrderNumber;
-                            workOrderPm.ContactPersonName = so.ContactPersonName;
-                            workOrderPm.ContactNo = so.ContactNo;
-                            workOrderPm.LineNo = sol.LineNumber ?? 0;
-                            workOrderPm.PORemarks = sol.Remarks;
-                            workOrderPm.ServerFileName = sol.SeverFileName;
-                            workOrderPm.FileName = sol.ThumbnailImageFileName;
-                            workOrderPm.CommittedDeliveryDate = ((DateTime)sol.DueDate).ToString("dd/MM/yyyy");
-
-                            workOrderPm.address2 = so.Comment;
-
-                            if (sol.UrgentFlag == EWorkOrderUrgentFlag.Urgent)
-                            {
-                                workOrderPm.SOPriority = "Urgent";
-                            }
-                            else if (sol.UrgentFlag == EWorkOrderUrgentFlag.VeryUrgent)
-                            {
-                                workOrderPm.SOPriority = "Very Urgent";
-                            }
-                            else
-                            {
-                                workOrderPm.SOPriority = "Standard";
-                            }
+                            workOrderPm.SOPriority = "Urgent";
                         }
-
-                        
+                        else if (sol.UrgentFlag == EWorkOrderUrgentFlag.VeryUrgent)
+                        {
+                            workOrderPm.SOPriority = "Very Urgent";
+                        }
+                        else
+                        {
+                            workOrderPm.SOPriority = "Standard";
+                        }
                     }  
                 }
 
@@ -1686,7 +1737,8 @@ namespace SIMTech.APS.WorkOrder.API.Controllers
                 }
                 else
                 {
-                    var item = ApiGetProduct(pm.ItemId??0);
+                    //var item = ApiGetProduct(pm.ItemId??0);
+                    var item = _items.FirstOrDefault(x => x.Id == (pm.ItemId??0));
                     if (item != null) pm.ProductName = item.Name;
                 }             
             }
@@ -1698,7 +1750,8 @@ namespace SIMTech.APS.WorkOrder.API.Controllers
             {
 
                 
-                var material = ApiGetProduct(workOrderMaterialPM.MaterialId);
+                //var material = ApiGetProduct(workOrderMaterialPM.MaterialId);
+                var material = _items.FirstOrDefault(x => x.Id == workOrderMaterialPM.MaterialId);
                 if (material != null)
                 {
                     if (!(workOrderMaterialPM.Availability ?? false))
@@ -1731,6 +1784,8 @@ namespace SIMTech.APS.WorkOrder.API.Controllers
                 workOrderPm.ThumbnailImageC = picture.ThumbNailImage;
             }
         }
+
+        
 
         private void AssignPOnumberForChildWorkOrders(IEnumerable<WorkOrderPM> workOrderPms)
         {
@@ -1788,98 +1843,7 @@ namespace SIMTech.APS.WorkOrder.API.Controllers
 
         
 
-        private async Task AssignAdditionalInformaitonForWorkOrder1(WorkOrderPM workOrderPm, WorkOrder workOrder, IEnumerable<ItemPM> Items, IEnumerable<BasePM> routes)
-        {
-            var product = Items.First(x => x.Id == workOrderPm.ProductId);
-            if (product != null)
-            {
-                workOrderPm.ProductName = product.Description;
-                workOrderPm.ProductNo = product.Name;
-                workOrderPm.ProductionYield = (decimal?)product.ProductionYield;
-                workOrderPm.ProductFamily = product.PartFamily;
-            }
-
-            if (workOrderPm.RouteId != null)
-            {
-                var route = routes.First(x => x.Id == workOrderPm.RouteId);
-                if (route.Description=="Validated")
-                {
-                    workOrderPm.RouteName = route.Name;
-                    workOrderPm.IsRouteConfirmed = route.Value == "Y";
-                }
-            }
-
-            if (workOrderPm.LinkWorkOrderId != null)
-            {
-                var linkWorkOrder = await _exceptionManager.Process(() => _workOrderRepository.GetByIdAsync(workOrderPm.LinkWorkOrderId??0), "ExceptionShielding");
-                if (linkWorkOrder != null) workOrderPm.LinkWorkOrderNumber = linkWorkOrder.WorkOrderNumber;
-            }
-
-            //foreach (WorkOrderLinePM workOrderLinePM in workOrderPm.WorkOrderLines)
-            //{
-            //    WorkOrderLinePM pm = workOrderLinePM;
-            //    if (pm.SalesOrderLineId != null)
-            //    {
-            //        //SalesOrderDetail salesOrderDetail = _exceptionManager.Process(() => _orderRepository.GetByKey<SalesOrderDetail>(pm.SalesOrderLineId), "ExceptionShielding");
-            //        var salesOrderDetail = workOrder.WorkOrderDetails.First(x => x.Id == workOrderLinePM.Id).SalesOrderDetail;
-            //        workOrderLinePM.SalesOrderNumber = salesOrderDetail.SalesOrder.SalesOrderNumber;
-            //        workOrderLinePM.SalesOrderLineNumber = salesOrderDetail.LineNumber;
-
-            //        workOrderLinePM.SalesOrderLineNumber = salesOrderDetail.LineNumber;
-
-            //        // XNA
-            //        workOrderPm.PONumbers = string.IsNullOrWhiteSpace(workOrderPm.PONumbers) ? salesOrderDetail.SalesOrder.SalesOrderNumber : workOrderPm.PONumbers + "; " + salesOrderDetail.SalesOrder.SalesOrderNumber;
-            //        workOrderPm.LineNo = salesOrderDetail.LineNumber;
-            //        workOrderPm.PORemarks = salesOrderDetail.Remark;
-            //        workOrderPm.CommittedDeliveryDate = ((DateTime)salesOrderDetail.DueDate).ToString("dd/MM/yyyy");
-            //    }
-
-            //    if (pm.ItemId == null) continue;
-            //    var item = Items.First(x => x.Id == pm.ItemId);
-            //    if (item != null) pm.ProductName = item.Name;
-            //}
-
-            workOrderPm.MaterialList = "";
-            workOrderPm.IsMaterialAllocated = true;
-
-            foreach (WorkOrderMaterialPM workOrderMaterialPM in workOrderPm.WorkOrderMaterials)
-            {
-
-                //Item material = _exceptionManager.Process(() => _productRepository.GetByKey<Item>(workOrderMaterialPM.MaterialId), "ExceptionShielding");
-                var material = Items.First(x => x.Id == workOrderMaterialPM.MaterialId);
-
-                if (material != null)
-                {
-                    if (!(workOrderMaterialPM.Availability ?? false))
-                        workOrderPm.IsMaterialAllocated = false;
-
-                    if (workOrderPm.MaterialList == "")
-                        workOrderPm.MaterialList = material.Name;
-                    else
-                        workOrderPm.MaterialList = workOrderPm.MaterialList + ";" + material.Name;
-                }
-            }
-
-            if (workOrderPm.MaterialList == "") workOrderPm.IsMaterialAllocated = null;
-
-            //if (workOrderPm.PictureA != null && workOrderPm.PictureA > 0)
-            //{
-            //    var picture = _exceptionManager.Process(() => _productRepository.GetByKey<Picture>(workOrderPm.PictureA), "ExceptionShielding");
-            //    workOrderPm.ThumbnailImageA = picture.ThumbNailImage;
-            //}
-
-            //if (workOrderPm.PictureB != null & workOrderPm.PictureB > 0)
-            //{
-            //    var picture = _exceptionManager.Process(() => _productRepository.GetByKey<Picture>(workOrderPm.PictureB), "ExceptionShielding");
-            //    workOrderPm.ThumbnailImageB = picture.ThumbNailImage;
-            //}
-
-            //if (workOrderPm.PictureC != null && workOrderPm.PictureC > 0)
-            //{
-            //    var picture = _exceptionManager.Process(() => _productRepository.GetByKey<Picture>(workOrderPm.PictureC), "ExceptionShielding");
-            //    workOrderPm.ThumbnailImageC = picture.ThumbNailImage;
-            //}
-        }
+       
 
         private void UpdateSalesOrderStatus( int soDetId, byte statusCode)
         {
@@ -1915,6 +1879,52 @@ namespace SIMTech.APS.WorkOrder.API.Controllers
             }
 
         }
+
+        private void GetAllAddtitionalDataFromOtherServices(List<WorkOrder> workOrders)
+        {
+            var itemIds = workOrders.Select(x => x.ProductId).Distinct().ToList();
+            var materialIds = workOrders.SelectMany(x => x.WorkOrderMaterials.Select(y=>y.MaterialId)).Distinct().ToList();
+            var customerIds = workOrders.Select(x => x.CustomerId).Distinct().ToList();
+            var routeIds = workOrders.Select(x => x.RouteId ?? 0).Distinct().ToList();
+            var locationIds = workOrders.Select(x => x.LocationId ?? 0).Distinct().ToList();
+            var createdBys= workOrders.Select(x => x.CreatedBy).Distinct().ToList();
+            var releasedBys = workOrders.Select(x => x.String4).Distinct().ToList(); //released by
+
+            var salesOrderLineIds = workOrders.SelectMany(x => x.WorkOrderDetails.Select(y => y.SalesOrderLineId??0).ToList ()).Distinct().ToList ();
+
+            var st1 = DateTime.Now;          
+            _items = ApiGetProducts(string.Join(",", itemIds.Concat(materialIds)));
+            Console.WriteLine("Duration for getting product info " + (DateTime.Now - st1).TotalSeconds.ToString());
+
+            st1 = DateTime.Now;
+            _customers = ApiGetCustomers(string.Join(",", customerIds));
+            Console.WriteLine("Duration for getting customer info " + (DateTime.Now - st1).TotalSeconds.ToString());
+
+            st1 = DateTime.Now;
+            _routings = ApiGetRoutes(string.Join(",", routeIds));
+            Console.WriteLine("Duration for getting route info " + (DateTime.Now - st1).TotalSeconds.ToString());
+
+            st1 = DateTime.Now;
+            _salesOrder = ApiGetSalesOrders(string.Join(",", salesOrderLineIds));
+            Console.WriteLine("Duration for getting sales order info " + (DateTime.Now - st1).TotalSeconds.ToString());
+
+            st1 = DateTime.Now;
+            //foreach (var locationId in locationIds)
+            //{
+            //    _locations.Add(ApiGetLocation(locationId));
+            //}
+            _locations=ApiGetLocations(string.Join(",", locationIds));
+            Console.WriteLine("Duration for getting location info " + (DateTime.Now - st1).TotalSeconds.ToString());
+
+            st1 = DateTime.Now;
+            foreach (var createdBy in createdBys.Concat(releasedBys).Distinct())
+            {
+                var displayName = ApiGetDisplayName(createdBy);
+                _displayNames.Add(new BasePM() { Code = createdBy, Name = displayName });              
+            }
+            Console.WriteLine("Duration for getting createdby/releasedby user info " + (DateTime.Now - st1).TotalSeconds.ToString());
+        }
+       
 
 
         #endregion
@@ -1953,6 +1963,23 @@ namespace SIMTech.APS.WorkOrder.API.Controllers
                 catch { }
             }
             
+            return product;
+        }
+
+        private List<IdNamePM> ApiGetProducts(string itemsId)
+        {
+            var product = new List<IdNamePM>();
+            var apiBaseUrl = Environment.GetEnvironmentVariable("RPS_PRODUCT_URL");
+
+            if (!string.IsNullOrWhiteSpace(apiBaseUrl))
+            {
+                try
+                {
+                    product = HttpHelper.Get<List<IdNamePM>>(apiBaseUrl, $"IdName/{itemsId}");
+                }
+                catch { }
+            }
+
             return product;
         }
 
@@ -2028,6 +2055,23 @@ namespace SIMTech.APS.WorkOrder.API.Controllers
             return so;
         }
 
+        private List<SalesOrderPM> ApiGetSalesOrders(string soDetIds)
+        {
+            var salesOrders = new List<SalesOrderPM>();
+            var apiBaseUrl = Environment.GetEnvironmentVariable("RPS_SALESORDER_URL");
+
+            if (!string.IsNullOrWhiteSpace(apiBaseUrl))
+            {
+                try
+                {
+                    salesOrders = HttpHelper.Get<List<SalesOrderPM>>(apiBaseUrl, $"DetailIds/{soDetIds}");
+                }
+                catch { }
+            }
+
+            return salesOrders;
+        }
+
         private void ApiUpdateSalesOrderLineStatus(SalesOrderLinePM sol)
         {
             var apiBaseUrl = Environment.GetEnvironmentVariable("RPS_SALESORDER_URL");
@@ -2088,6 +2132,23 @@ namespace SIMTech.APS.WorkOrder.API.Controllers
             }
                   
             return route;
+        }
+
+        private List<BasePM> ApiGetRoutes(string routeIds)
+        {
+            var routes = new List<BasePM>();
+            var apiBaseUrl = Environment.GetEnvironmentVariable("RPS_ROUTE_URL");
+
+            if (!string.IsNullOrWhiteSpace(apiBaseUrl) && routeIds !="")
+            {
+                try
+                {
+                    routes = HttpHelper.Get<List<BasePM>>(apiBaseUrl, $"IdNames/{routeIds}");
+                }
+                catch { }
+            }
+
+            return routes;
         }
 
         private int ApiGetRouteforProduct(int productId, string productFamily)
@@ -2167,6 +2228,24 @@ namespace SIMTech.APS.WorkOrder.API.Controllers
             return customer;
         }
 
+        private List<BasePM> ApiGetCustomers(string customerIds)
+        {
+            var customers = new List<BasePM>();
+            var apiBaseUrl = Environment.GetEnvironmentVariable("RPS_CUSTOMER_URL");
+
+            if (!string.IsNullOrWhiteSpace(apiBaseUrl))
+            {
+                try
+                {
+                     customers = HttpHelper.Get<List<BasePM>>(apiBaseUrl, $"IdName/{customerIds}");
+ 
+                }
+                catch { }
+            }
+
+            return customers;
+        }
+
         private BasePM ApiGetLocation(int locationId)
         {
             BasePM location = null;
@@ -2182,6 +2261,23 @@ namespace SIMTech.APS.WorkOrder.API.Controllers
             }
            
             return location;
+        }
+
+        private List<BasePM> ApiGetLocations(string locationIds)
+        {
+            var locations = new List<BasePM>();
+            var apiBaseUrl = Environment.GetEnvironmentVariable("RPS_LOCATION_URL");
+
+            if (!string.IsNullOrWhiteSpace(apiBaseUrl))
+            {
+                try
+                {
+                    locations = HttpHelper.Get<List<BasePM>>(apiBaseUrl, $"IdName/{locationIds}");
+                }
+                catch { }
+            }
+
+            return locations;
         }
 
         private BasePM ApiGetDefaultUnit()
@@ -2239,14 +2335,15 @@ namespace SIMTech.APS.WorkOrder.API.Controllers
 
             var apiBaseUrl = Environment.GetEnvironmentVariable("RPS_INVENTORY_URL");
 
-            if (!string.IsNullOrWhiteSpace(apiBaseUrl))
-            {
-                try
-                {
-                    qty = HttpHelper.Get<double>(apiBaseUrl, $"{workOrderId}");
-                }
-                catch { }
-            }
+            //skip first
+            //if (!string.IsNullOrWhiteSpace(apiBaseUrl))
+            //{
+            //    try
+            //    {
+            //        qty = HttpHelper.Get<double>(apiBaseUrl, $"{workOrderId}");
+            //    }
+            //    catch { }
+            //}
 
             return qty;
         }

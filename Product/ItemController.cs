@@ -32,6 +32,7 @@ namespace SIMTech.APS.Product.API.Controllers
         private readonly IItemRepository _itemRepository;
         private readonly IBOMRepository _bomRepository;
         private readonly ExceptionManager _exceptionManager;
+        private List<BasePM> _customers = new List<BasePM>();
 
         public ItemController(IItemRepository itemRepository, IBOMRepository bomRepository)
         {
@@ -49,14 +50,34 @@ namespace SIMTech.APS.Product.API.Controllers
             return ItemMapper.ToPartTypes(items);
         }
 
-        [HttpGet]
-        [Route("IdName/{ItemIds}")]
-        public List<BasePM> GetItemsIdName(string ItemIds)
+        
+        [HttpGet("IdName/{itemIds}")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        public List<IdNamePM> GetItemsIdName(string itemIds)
         {
-            var Ids = ItemIds.Split(",").Select(x => Int32.Parse(x)).ToList();
 
-            IQueryable<Item> items = _exceptionManager.Process(() => _itemRepository.GetQuery(i => Ids.Contains (i.Id)), "ExceptionShielding");
-            return items.Select(kt => new BasePM() { Id = kt.Id, Name = kt.ItemName, Description = kt.Description, Value = (kt.Int7??0).ToString () }).OrderBy(kt => kt.Name).ToList();
+            var productIds = new List<int>();
+            var items = new List<IdNamePM>();
+
+            if (itemIds == "0")
+            {
+                items = ( _itemRepository.GetQuery(x => x.Id > 0)).Select(x => new IdNamePM() { Id = x.Id, Code = x.ItemName, Name = x.ItemName, Description = x.Description,Value=(x.Int7??0).ToString (), Category = x.Category, Float1 = x.Float1, String1 = x.Group1 }).OrderBy (x=>x.Name).ToList();
+            }
+            else
+            {
+                try
+                {
+                    productIds = itemIds.Split(",").Select(x => Int32.Parse(x)).ToList();
+                }
+                catch (Exception e)
+                {
+                    Console.WriteLine(e.Message);
+                }
+                items = _itemRepository.GetQuery(x=>productIds.Contains(x.Id)).Select(x => new IdNamePM() { Id = x.Id, Code = x.ItemName, Name = x.ItemName, Description = x.Description, Value = (x.Int7 ?? 0).ToString(), Category = x.Category, Float1 = x.Float1, String1 = x.Group1 }).OrderBy(x=>x.Name).ToList();
+            }
+
+            return items;
+            
         }
 
         [HttpGet("DB/{itemIds}")]
@@ -1154,6 +1175,233 @@ namespace SIMTech.APS.Product.API.Controllers
             return ItemMapper.ToPresentationModels(items).ToList();
         }
 
+        [HttpPost("Material/Import")]
+        [ProducesResponseType(StatusCodes.Status201Created)]
+        [ProducesResponseType(StatusCodes.Status409Conflict)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        public IActionResult Importrawmaterials([FromBody] List<RawMaterialPM> materialsPM)
+        {
+            var materials = RawMaterialMapper.FromPresentationModels(materialsPM);
+            var count = 0;
+
+            var suppliers = materialsPM.Select(x=> new BasePM() {Code = x.SupplierName,Name=x.SupplierName }).Distinct ().ToList();
+
+            suppliers = ApiGetSupplierIds(suppliers);
+
+            try
+            {
+                foreach (var material in materials)
+                {
+                    var a = _itemRepository.GetQuery(x => x.ItemName == material.ItemName && x.Category == "RawMaterial").FirstOrDefault();
+                    var b = suppliers.FirstOrDefault(x=>x.Code==material.MaxString1);
+                    if (a == null)
+                    {
+
+                        material.CreatedOn = DateTime.Now;
+                        material.Category = "RawMaterial";
+                        if (b!=null) material.Int1 = b.Id;
+                        _itemRepository.Insert(material);
+                        count++;
+                    }
+                    else
+                    {
+                        a.ItemName = material.ItemName;
+                        a.UnitPrice = material.UnitPrice;
+                        a.Description = material.Description;
+
+                        if (b != null) material.Int1 = b.Id;
+                        a.Float1 = material.Float1; //productionLoss
+                        a.String3 = material.String3; //Length
+                        a.String4 = material.String4; //OuterDiameter
+                        a.String5 = material.String5; //thickness
+                        a.String6 = material.String6; //width
+                        a.String7 = material.String7; //remarks
+                        a.String8 = material.String8; //grade
+                        a.String9 = material.String9; //type
+                        a.Group1 = material.Group1; //uom
+                        a.Group2 = material.Group2; //currency
+
+                        a.MaxString1 = material.MaxString1; //description
+                        _itemRepository.Update(a);
+                    }
+
+                }
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e.Message);
+            }
+
+
+            return new OkObjectResult(count++);
+        }
+
+        [HttpPost("Part/Import")]
+        [ProducesResponseType(StatusCodes.Status201Created)]
+        [ProducesResponseType(StatusCodes.Status409Conflict)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        public IActionResult ImportParts([FromBody] List<KitTypePM> partsPM)
+        {
+          
+           
+            var count = 0;
+            var customers = partsPM.Select(x => new BasePM() { Code = x.Customers, Name = x.Customers }).Distinct().ToList();
+            customers = ApiGetCustomerIds(customers);
+
+            try
+            {
+                foreach (var partPM in partsPM)
+                {
+                    var part = KitTypeMapper.FromPresentationModel(partPM);
+       
+                   
+                    var a = _itemRepository.GetQuery(x => x.ItemName == part.ItemName && x.Category == "ProductHierarchyLevelB").FirstOrDefault();
+                    var b = customers.FirstOrDefault(x => x.Code == partPM.Customers && x.Id > 0);
+                    if (a == null)
+                    {
+                        part.Category = "ProductHierarchyLevelB";
+                        part.CreatedOn = DateTime.Now;
+                        if (b != null) part.Int10 = b.Id;
+                        _itemRepository.Insert(part);
+
+                        foreach (var matl in partPM.Components)
+                        {
+                            var c = _itemRepository.GetQuery(x => x.ItemName == matl.ProductName && x.Category == "RawMaterial").FirstOrDefault();
+                            var n = 0;
+                            if (c != null)
+                            {
+                                matl.ProductAssemblyId = part.Id;
+                                matl.ComponentId = c.Id;
+                                matl.UomCode = n.ToString("000");
+                                matl.BomLevel = 0;
+                                var bomController = new BOMController(_bomRepository);
+                                bomController.AddBOM(matl);
+                            }
+                        }
+
+                        if (b != null)
+                        {
+                            var customerItem = new CustomerItem() { CustomerId = (int)b.Id, ItemId = part.Id };
+
+                            _exceptionManager.Process(() => { _itemRepository.AddCustomerItem(customerItem); }, "ExceptionShielding");
+                        }
+
+                        count++;
+                    }
+                    else
+                    {
+                        a.ItemName = part.ItemName;
+                        a.Description = part.Description;
+
+                        if (b != null) part.Int1 = b.Id;
+                        a.Float1 = part.Float1; //production yield
+
+                        a.String4 = part.String4; //FGDimension                      
+                        a.String9 = part.String9; //Revision                     
+                        a.Group1 = part.Group1; //part family
+                        a.Group2 = part.Group2; //make or buy
+                        a.Int7 = part.Int7; //qty per lot
+
+                        a.MaxString1 = part.MaxString1; //remarks
+                        _itemRepository.Update(a);
+                    }
+
+                }
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e.Message);
+            }
+
+
+            return new OkObjectResult(count);
+        }
+
+        
+
+        [HttpPost("Assembly/Import")]
+        [ProducesResponseType(StatusCodes.Status201Created)]
+        [ProducesResponseType(StatusCodes.Status409Conflict)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        public IActionResult ImportAssemblies([FromBody] List<KitTypePM> partsPM)
+        {
+
+
+            var count = 0;
+            var customers = partsPM.Select(x => new BasePM() { Code = x.Customers, Name = x.Customers }).Distinct().ToList();
+            customers = ApiGetCustomerIds(customers);
+
+            try
+            {
+                foreach (var partPM in partsPM)
+                {
+                    var part = KitTypeMapper.FromPresentationModel(partPM);
+
+
+                    var a = _itemRepository.GetQuery(x => x.ItemName == part.ItemName && x.Category == "ProductHierarchyLevelR").FirstOrDefault();
+                    var b = customers.FirstOrDefault(x => x.Code == partPM.Customers && x.Id > 0);
+                    if (a == null)
+                    {
+                        part.Category = "ProductHierarchyLevelR";
+                        part.CreatedOn = DateTime.Now;
+                        if (b != null) part.Int10 = b.Id;
+                        _itemRepository.Insert(part);
+
+                        foreach (var matl in partPM.Components)
+                        {
+                            var c = _itemRepository.GetQuery(x => x.ItemName == matl.ProductName && x.Category != "RawMaterial").FirstOrDefault();
+                            if (c==null) c = _itemRepository.GetQuery(x => x.ItemName == matl.ProductName && x.Category == "RawMaterial").FirstOrDefault();
+                            
+                            var n = 0;
+                            if (c != null)
+                            {
+                                matl.ProductAssemblyId = part.Id;
+                                matl.ComponentId = c.Id;
+                                matl.UomCode = n.ToString("000");
+                                matl.BomLevel = 0;
+                                var bomController = new BOMController(_bomRepository);
+                                bomController.AddBOM(matl);
+                            }
+                        }
+
+                        if (b != null)
+                        {
+                            var customerItem = new CustomerItem() { CustomerId = (int)b.Id, ItemId = part.Id };
+
+                            _exceptionManager.Process(() => { _itemRepository.AddCustomerItem(customerItem); }, "ExceptionShielding");
+                        }
+
+                        count++;
+                    }
+                    else
+                    {
+                        a.ItemName = part.ItemName;
+                        a.Description = part.Description;
+
+                        if (b != null) part.Int1 = b.Id;
+                        a.Float1 = part.Float1; //production yield
+
+                        a.String4 = part.String4; //FGDimension                      
+                        a.String9 = part.String9; //Revision                     
+                        a.Group1 = part.Group1; //part family
+                        a.Group2 = part.Group2; //make or buy
+                        a.Int7 = part.Int7; //qty per lot
+
+                        a.MaxString1 = part.MaxString1; //remarks
+                        _itemRepository.Update(a);
+                    }
+
+                }
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e.Message);
+            }
+
+
+            return new OkObjectResult(count);
+        }
+
         [HttpGet]
         [Route("Material/LinkedPart/{partId}")]
         public ItemPM GetLinkedPart( int partId)
@@ -1212,13 +1460,21 @@ namespace SIMTech.APS.Product.API.Controllers
 
             var customerIds = _itemRepository.GetCustomers(item.Id);
 
-            var customers = ApiGetCustomers(string.Join(",", customerIds));
+            var custIds =customerIds.Except(_customers.Select(x => x.Id)).ToList ();
+
+            if (custIds.Count>0)
+            {
+                
+                var customers = ApiGetCustomers(string.Join(",", custIds));
+                _customers.AddRange(customers);
+            }
+            
            
             //call api from customer service using eventbus
             foreach (var customerId in customerIds)
             {
                 //kitTypePM.Customers += ";" + ApiGetCustomerName(customerId);
-                var customer = customers.Where(x => x.Id == customerId).FirstOrDefault();
+                var customer = _customers.Where(x => x.Id == customerId).FirstOrDefault();
                 if (customer!=null) kitTypePM.Customers += ";" + customer.Code;
                 kitTypePM.CustomerId = customerId;
             }
@@ -1274,6 +1530,7 @@ namespace SIMTech.APS.Product.API.Controllers
 
             var bomController = new BOMController(_bomRepository);
             kitTypePM.Components = bomController.GetBillOfMaterialsbyAssemblyId(item.Id);
+            kitTypePM.NoOfParts = kitTypePM.Components.Where(x=>x.Category!= "RawMaterial").Count();
 
             return kitTypePM;
         }
@@ -1288,13 +1545,21 @@ namespace SIMTech.APS.Product.API.Controllers
 
             var customerIds = _itemRepository.GetCustomers(item.Id);
 
-            var customers = ApiGetCustomers(string.Join(",", customerIds));
+            var custIds = customerIds.Except(_customers.Select(x => x.Id)).ToList();
 
+            if (custIds.Count > 0)
+            {
+
+                var customers = ApiGetCustomers(string.Join(",", custIds));
+                _customers.AddRange(customers);
+            }
+
+           
             //call api from customer service using eventbus
             foreach (var customerId in customerIds)
             {
                 //partTypePM.Customers += ";" + ApiGetCustomerName(customerId);
-                var customer = customers.Where(x => x.Id == customerId).FirstOrDefault();
+                var customer = _customers.Where(x => x.Id == customerId).FirstOrDefault();
                 if (customer != null) partTypePM.Customers += ";" + customer.Code;
                 partTypePM.CustomerId = customerId;
             }
@@ -1804,6 +2069,65 @@ namespace SIMTech.APS.Product.API.Controllers
             }
 
             return items.ToList();
+        }
+
+
+        private List<BasePM> ApiGetSupplierIds(List<BasePM> suppliers)
+        {
+            
+            var apiBaseUrl = Environment.GetEnvironmentVariable("RPS_CUSTOMER_URL");
+
+            apiBaseUrl = apiBaseUrl.Replace("customer", "supplier");
+            apiBaseUrl = apiBaseUrl.Replace("Customer", "Supplier");
+
+
+            if (!string.IsNullOrWhiteSpace(apiBaseUrl))
+            {
+                try
+                {
+
+                    var task =  HttpHelper.PostAsync<List<BasePM>, List<BasePM>>(apiBaseUrl, $"Suppliers", suppliers);
+                    task.Wait();
+                    var result = task.Result;
+          
+                    if (result != null) suppliers = result;
+                }
+                catch (Exception e)
+                {
+                    Console.WriteLine(e.Message);
+                    if (e.InnerException != null) Console.WriteLine(e.Message);
+                }
+            }
+
+            return suppliers;
+        }
+
+       
+        private List<BasePM> ApiGetCustomerIds(List<BasePM> customers)
+        {
+
+            var apiBaseUrl = Environment.GetEnvironmentVariable("RPS_CUSTOMER_URL");
+
+           
+            if (!string.IsNullOrWhiteSpace(apiBaseUrl))
+            {
+                try
+                {
+
+                    var task = HttpHelper.PostAsync<List<BasePM>, List<BasePM>>(apiBaseUrl, $"Customers", customers);
+                    task.Wait();
+                    var result = task.Result;
+
+                    if (result != null) customers = result;
+                }
+                catch (Exception e)
+                {
+                    Console.WriteLine(e.Message);
+                    if (e.InnerException != null) Console.WriteLine(e.Message);
+                }
+            }
+
+            return customers;
         }
 
 

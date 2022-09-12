@@ -49,7 +49,7 @@ namespace SIMTech.APS.SalesOrder.API.Controllers
 
             var salesOrdersPM= SalesOrderMapper.ToPresentationModels(salesOrders).ToList ();
 
-            var customerIds = salesOrdersPM.Where (x=>x.CustomerId!=null).Select (x=>x.CustomerId).ToList ();
+            var customerIds = salesOrdersPM.Where (x=>x.CustomerId!=null).Select (x=>x.CustomerId).Distinct().ToList ();
 
             var customers = ApiGetCustomers(string.Join(",", customerIds));
 
@@ -75,6 +75,8 @@ namespace SIMTech.APS.SalesOrder.API.Controllers
 
         }
 
+
+
         [HttpGet]
         [Route("{id}")]
         public SalesOrderPM GetSalesOrderById(int id)
@@ -87,6 +89,40 @@ namespace SIMTech.APS.SalesOrder.API.Controllers
             b.SalesOrderLines = GetSalesOrderLines(b.Id).ToList ();
 
             return b;
+        }
+
+        [HttpGet("DetailIds/{salesOrderLineIds}")]
+        //public async Task<IEnumerable<Customer>> GetAllCustomers() => await _SalesRepository.GetAll();
+        public IEnumerable<SalesOrderPM> GetSalesOrders(string salesOrderLineIds)
+        {          
+            var salesOrders = _salesOrderRepository.GetSalesOrders(salesOrderLineIds);
+
+            var salesOrdersPM = SalesOrderMapper.ToPresentationModels(salesOrders).ToList();
+
+            //var customerIds = salesOrdersPM.Where(x => x.CustomerId != null).Select(x => x.CustomerId).Distinct().ToList();
+
+            //var customers = ApiGetCustomers(string.Join(",", customerIds));
+
+            foreach (var so in salesOrdersPM)
+            {
+               
+                //if (so.CustomerId != null)
+                //{
+                //    var customer = customers.Where(x => x.Id == so.CustomerId).FirstOrDefault();
+                //    if (customer != null) so.CustomerName = customer.Code;
+                //}
+
+                //so.SalesOrderLines= GetSalesOrderLines(so.Id,false).ToList ();
+                var so1 = salesOrders.First(x => x.Id == so.Id);
+                so.SalesOrderLines = SalesOrderLineMapper.ToPresentationModels(so1.SalesOrderDetails).ToList(); ;
+            }
+
+
+
+            return salesOrdersPM.AsQueryable();
+
+
+
         }
 
         [HttpPost]
@@ -253,7 +289,7 @@ namespace SIMTech.APS.SalesOrder.API.Controllers
             }
             //var so = _salesOrderRepository.GetById(sol.SalesOrderId);
             //if (so != null) sol.SalesOrderNumber = so.SalesOrderNumber;
-            sol.SalesOrderNumber = salesOrderDetail.SalesOrder.SalesPersonName;
+            sol.SalesOrderNumber = salesOrderDetail.SalesOrder.SalesOrderNumber;
 
 
             return sol;

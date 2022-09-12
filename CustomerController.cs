@@ -111,9 +111,31 @@ namespace SIMTech.APS.Customer.API.Controllers
             
         }
 
+        [HttpPost("Customers")]
+        public async Task<ActionResult<List<BasePM>>> AddCustomers1([FromBody] List<BasePM> customers)
+        {
+
+            foreach (var customer in customers)
+            {
+                var a = _customerRepository.GetQuery(x => x.CustomerName == customer.Code && x.Category == "Customer").FirstOrDefault();
+                if (a != null)
+                {
+                    customer.Id = a.Id;
+                }
+                else
+                {
+                    var b = new Customer() { CustomerName = customer.Code, CompanyName = customer.Name, Category = "Customer" };
+                    await _customerRepository.InsertAsync(b);
+                    customer.Id = b.Id;
+                }
+
+            }
+            return new OkObjectResult(customers);
+        }
 
 
-        [HttpPost]
+
+            [HttpPost]
         [Consumes(MediaTypeNames.Application.Json)]
         [ProducesResponseType(StatusCodes.Status201Created)]
         [ProducesResponseType(StatusCodes.Status409Conflict)]
@@ -131,6 +153,54 @@ namespace SIMTech.APS.Customer.API.Controllers
 
             CustomerMapper.UpdatePresentationModel(customerPM, customer);
             return new OkObjectResult(customerPM);
+        }
+
+        [HttpPost("Import")]
+        [Consumes(MediaTypeNames.Application.Json)]
+        [ProducesResponseType(StatusCodes.Status201Created)]
+        [ProducesResponseType(StatusCodes.Status409Conflict)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        public IActionResult ImportCustomers([FromBody] List<CustomerPM> customersPM)
+        {
+            var customers = CustomerMapper.FromPresentationModels(customersPM);
+            var count = 0;
+
+            try
+            {
+                foreach (var customer in customers)
+                {
+                    var a =_customerRepository.GetQuery(x=>x.CustomerName== customer.CustomerName && x.Category== "Customer").FirstOrDefault();
+                    if (a==null)
+                    {
+                        customer.CreatedOn = DateTime.Now;
+                        customer.Category = "Customer";                   
+                        _customerRepository.Insert(customer);
+                        count++;
+                    }
+                    else
+                    {
+                        a.CompanyName = customer.CompanyName;
+                        a.Address = customer.Address;
+                        a.CompanyName = customer.CompanyName;
+                        a.ContactPerson = customer.ContactPerson;
+                        a.Email = customer.Email;
+                        a.Phone = customer.Phone;
+                        a.BillingAddress = customer.BillingAddress;
+                        a.String3 = customer.String3; //fax
+                        a.String5 = customer.String5; //creditterm
+                        a.MaxString1 = customer.MaxString1; //description
+                        _customerRepository.Update(a);
+                    }
+                   
+                }
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e.Message);
+            }
+            
+            
+            return new OkObjectResult(count++);
         }
 
         [HttpPut]
