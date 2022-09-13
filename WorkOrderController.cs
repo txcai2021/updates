@@ -1894,27 +1894,23 @@ namespace SIMTech.APS.WorkOrder.API.Controllers
 
             var st1 = DateTime.Now;          
             _items = ApiGetProducts(string.Join(",", itemIds.Concat(materialIds)));
-            Console.WriteLine("Duration for getting product info " + (DateTime.Now - st1).TotalSeconds.ToString());
+            Console.WriteLine("Duration for getting product info: " + (DateTime.Now - st1).TotalSeconds.ToString()+",parts:"+_items.Count().ToString ());
 
             st1 = DateTime.Now;
             _customers = ApiGetCustomers(string.Join(",", customerIds));
-            Console.WriteLine("Duration for getting customer info " + (DateTime.Now - st1).TotalSeconds.ToString());
+            Console.WriteLine("Duration for getting customer info: " + (DateTime.Now - st1).TotalSeconds.ToString()+",customers:" + _customers.Count().ToString());
 
             st1 = DateTime.Now;
             _routings = ApiGetRoutes(string.Join(",", routeIds));
-            Console.WriteLine("Duration for getting route info " + (DateTime.Now - st1).TotalSeconds.ToString());
+            Console.WriteLine("Duration for getting route info: " + (DateTime.Now - st1).TotalSeconds.ToString()+ ",routes:" + _routings.Count().ToString());
 
             st1 = DateTime.Now;
             _salesOrder = ApiGetSalesOrders(string.Join(",", salesOrderLineIds));
-            Console.WriteLine("Duration for getting sales order info " + (DateTime.Now - st1).TotalSeconds.ToString());
+            Console.WriteLine("Duration for getting sales order info: " + (DateTime.Now - st1).TotalSeconds.ToString()+ ",sales order:" + _salesOrder.Count().ToString());
 
-            st1 = DateTime.Now;
-            //foreach (var locationId in locationIds)
-            //{
-            //    _locations.Add(ApiGetLocation(locationId));
-            //}
+            st1 = DateTime.Now;          
             _locations=ApiGetLocations(string.Join(",", locationIds));
-            Console.WriteLine("Duration for getting location info " + (DateTime.Now - st1).TotalSeconds.ToString());
+            Console.WriteLine("Duration for getting location info " + (DateTime.Now - st1).TotalSeconds.ToString()+ ",locations:" + _locations.Count().ToString());
 
             st1 = DateTime.Now;
             foreach (var createdBy in createdBys.Concat(releasedBys).Distinct())
@@ -1922,7 +1918,7 @@ namespace SIMTech.APS.WorkOrder.API.Controllers
                 var displayName = ApiGetDisplayName(createdBy);
                 _displayNames.Add(new BasePM() { Code = createdBy, Name = displayName });              
             }
-            Console.WriteLine("Duration for getting createdby/releasedby user info " + (DateTime.Now - st1).TotalSeconds.ToString());
+            Console.WriteLine("Duration for getting createdby/releasedby user info " + (DateTime.Now - st1).TotalSeconds.ToString()+ ",createdby/releasedby:" + _displayNames.Count().ToString());
         }
        
 
@@ -1977,10 +1973,15 @@ namespace SIMTech.APS.WorkOrder.API.Controllers
                 {
                     product = HttpHelper.Get<List<IdNamePM>>(apiBaseUrl, $"IdName/{itemsId}");
                 }
-                catch { }
+                catch (Exception e)
+                {
+                    Console.WriteLine("Error in getting assembies/parts:" + $"IdName/{itemsId}");
+                    Console.WriteLine(e.Message);
+                    if (e.InnerException != null) Console.WriteLine(e.InnerException.Message);
+                }
             }
 
-            return product;
+            return product?? new List<IdNamePM>();
         }
 
         private List<ItemPM> ApiGetProductbyAssembly(int assemblyId)
@@ -2066,10 +2067,15 @@ namespace SIMTech.APS.WorkOrder.API.Controllers
                 {
                     salesOrders = HttpHelper.Get<List<SalesOrderPM>>(apiBaseUrl, $"DetailIds/{soDetIds}");
                 }
-                catch { }
+                catch (Exception e)
+                {
+                    Console.WriteLine("Error in getting sales order:" + $"DetailIds/{soDetIds}");
+                    Console.WriteLine(e.Message);
+                    if (e.InnerException!=null) Console.WriteLine(e.InnerException.Message);
+                }
             }
 
-            return salesOrders;
+            return salesOrders?? new List<SalesOrderPM>();
         }
 
         private void ApiUpdateSalesOrderLineStatus(SalesOrderLinePM sol)
@@ -2145,10 +2151,15 @@ namespace SIMTech.APS.WorkOrder.API.Controllers
                 {
                     routes = HttpHelper.Get<List<BasePM>>(apiBaseUrl, $"IdNames/{routeIds}");
                 }
-                catch { }
+                catch (Exception e)
+                {
+                    Console.WriteLine("Error in getting routings:" + $"IdNames/{routeIds}");
+                    Console.WriteLine(e.Message);
+                    if (e.InnerException != null) Console.WriteLine(e.InnerException.Message);
+                }
             }
 
-            return routes;
+            return routes ?? new List<BasePM>(); 
         }
 
         private int ApiGetRouteforProduct(int productId, string productFamily)
@@ -2240,10 +2251,15 @@ namespace SIMTech.APS.WorkOrder.API.Controllers
                      customers = HttpHelper.Get<List<BasePM>>(apiBaseUrl, $"IdName/{customerIds}");
  
                 }
-                catch { }
+                catch (Exception e)
+                {
+                    Console.WriteLine("Error in getting customers:" + $"IdName/{customerIds}");
+                    Console.WriteLine(e.Message);
+                    if (e.InnerException != null) Console.WriteLine(e.InnerException.Message);
+                }
             }
 
-            return customers;
+            return customers?? new List<BasePM>(); 
         }
 
         private BasePM ApiGetLocation(int locationId)
@@ -2274,10 +2290,15 @@ namespace SIMTech.APS.WorkOrder.API.Controllers
                 {
                     locations = HttpHelper.Get<List<BasePM>>(apiBaseUrl, $"IdName/{locationIds}");
                 }
-                catch { }
+                catch (Exception e)
+                {
+                    Console.WriteLine("Error in getting locations:" + $"DetailIds/{locationIds}");
+                    Console.WriteLine(e.Message);
+                    if (e.InnerException != null) Console.WriteLine(e.InnerException.Message);
+                }
             }
 
-            return locations;
+            return locations?? new List<BasePM>();
         }
 
         private BasePM ApiGetDefaultUnit()
