@@ -1,15 +1,14 @@
-﻿using Microsoft.AspNetCore.Mvc;
-using System;
-using System.Text;
-using System.Collections.Generic;
-using System.Transactions;
-using System.Threading.Tasks;
-using System.Linq;
-using Microsoft.AspNetCore.Http;
+﻿using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using System.Net.Mime;
 using Microsoft.Practices.EnterpriseLibrary.ExceptionHandling;
 using RabbitMQ.Client;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Net.Mime;
+using System.Text;
+using System.Threading.Tasks;
 
 
 
@@ -17,18 +16,18 @@ using RabbitMQ.Client;
 
 namespace SIMTech.APS.WorkOrder.API.Controllers
 {
-    using SIMTech.APS.WorkOrder.API.Repository;
+    using SIMTech.APS.Customer.API.PresentationModels;
+    using SIMTech.APS.Models;
+    using SIMTech.APS.PresentationModels;
+    using SIMTech.APS.Product.API.PresentationModels;
+    using SIMTech.APS.SalesOrder.API.Enums;
+    using SIMTech.APS.SalesOrder.API.PresentationModels;
+    using SIMTech.APS.Utilities;
+    using SIMTech.APS.WorkOrder.API.Enums;
     using SIMTech.APS.WorkOrder.API.Mappers;
     using SIMTech.APS.WorkOrder.API.Models;
     using SIMTech.APS.WorkOrder.API.PresentationModels;
-    using SIMTech.APS.Customer.API.PresentationModels;
-    using SIMTech.APS.Product.API.PresentationModels;
-    using SIMTech.APS.SalesOrder.API.PresentationModels;
-    using SIMTech.APS.PresentationModels;
-    using SIMTech.APS.WorkOrder.API.Enums;
-    using SIMTech.APS.SalesOrder.API.Enums;   
-    using SIMTech.APS.Models;
-    using SIMTech.APS.Utilities;
+    using SIMTech.APS.WorkOrder.API.Repository;
     //using SIMTech.APS.WorkOrder.API.Enums;
 
     [Route("api/[controller]")]
@@ -262,6 +261,16 @@ namespace SIMTech.APS.WorkOrder.API.Controllers
             var wips=WIPMapper.ToPresentationModels(wip1).ToList ();
 
             return Ok(wips);
+        }
+
+        [HttpGet("Status/{startDate}/{endDate}")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public async Task<ActionResult<List<BasePM>>> GetWordOrderStatus(DateTime startDate, DateTime endDate)
+        {
+            var a =_workOrderRepository.GetQuery(x=>x.CreatedOn>=startDate && x.CreatedOn<=endDate ).OrderBy (x=>x.Status ).ThenBy (x=>x.WorkOrderNumber);
+            var b = a.Select(x => new BasePM() { Id = x.Id, Name = x.WorkOrderNumber, Value = ((EWorkOrderStatus)x.Status).ToString() }).ToList();
+            return Ok(b);
         }
 
 

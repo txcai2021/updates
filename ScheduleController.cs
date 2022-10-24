@@ -205,7 +205,64 @@ namespace SIMTech.APS.Scheduling.API.Controllers
             return RuleMapper.ToPresentationModels(rules).AsQueryable();
         }
 
+        [HttpGet("OTP/{startDate}/{endDate}")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public async Task<ActionResult<List<BasePM>>> GetScheduleOTP(DateTime startDate, DateTime endDate)
+        {
 
+            var a = _scheduleDetailRepository.GetQuery(x => x.CreatedOn >= startDate && x.CreatedOn <= endDate && (x.ScheduleType == "X" || x.ScheduleType == "R")).GroupBy(x => new { x.WorkOrderId, x.WorkOrderNumber, x.WorkOrderDueDate })
+                    .Select(grp => new BasePM() { Id = grp.Key.WorkOrderId, Name = grp.Key.WorkOrderNumber,  Code = "L", Value = (grp.Max(x => x.EndDate) - grp.Key.WorkOrderDueDate).ToString() }).ToList().OrderBy(x => x.Name);
+
+            var b = _scheduleDetailRepository.GetQuery(x => x.CreatedOn >= startDate && x.CreatedOn <= endDate && x.ScheduleType == "U").GroupBy(x => new { x.WorkOrderId, x.WorkOrderNumber, x.MaxString1 })
+                   .Select(grp => new BasePM() { Id = grp.Key.WorkOrderId, Name = grp.Key.WorkOrderNumber, Description = grp.Key.MaxString1 , Value ="0", Code ="U"}).OrderBy(x => x.Name).ToList();
+
+            foreach (var c in a.Where(x=>x.Value.Contains ("-")))
+            {
+                c.Code = "O";
+            }
+
+            return Ok(a.Concat(b));
+        }
+
+        [HttpGet("MachineUtilization/{startDate}/{endDate}")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public async Task<ActionResult<List<BasePM>>> GetScheduleMachineUtilization(DateTime startDate, DateTime endDate)
+        {
+
+            var job1 = _scheduleDetailRepository.GetQuery(x => x.CreatedOn >= startDate && x.CreatedOn <= endDate && x.ScheduleType != "A" && x.ScheduleType != "U").OrderBy(x => x.StartDate).FirstOrDefault();
+
+            var job2 = _scheduleDetailRepository.GetQuery(x => x.CreatedOn >= startDate && x.CreatedOn <= endDate && x.ScheduleType != "A" && x.ScheduleType != "U").OrderByDescending(x => x.EndDate).FirstOrDefault();
+
+            if (job1 != null) startDate = job1.StartDate;
+            if (job2 != null) startDate = job2.EndDate;
+
+
+            var a = _scheduleDetailRepository.GetQuery(x => x.CreatedOn >= startDate && x.CreatedOn <= endDate).GroupBy(x => new { x.EquipmentId, x.EquipmentName })
+                  .Select(grp => new BasePM() { Id = grp.Key.EquipmentId, Name = grp.Key.EquipmentName, Value = (grp.Sum(x => x.RunTime)).ToString() }).OrderBy(x => x.Name).ToList();
+
+
+            var totalTime = (endDate - startDate).TotalSeconds;
+
+            var b = _scheduleDetailRepository.GetQuery(x => x.CreatedOn >= startDate && x.CreatedOn <= endDate && x.ScheduleType!="A" && x.ScheduleType != "U").GroupBy(x => new {x.EquipmentId, x.EquipmentName })
+                   .Select(grp => new BasePM() { Id = grp.Key.EquipmentId, Name = grp.Key.EquipmentName, Value = (grp.Sum(x => x.RunTime) ).ToString() }).OrderBy(x => x.Name).ToList();
+
+
+            foreach (var c in b  )
+            {
+                var runTime = Convert.ToSingle(c.Value);
+                var d=a.Where(x => x.Id == c.Id).FirstOrDefault();
+                if (d!=null)
+                {
+                    totalTime = Convert.ToSingle(d.Value);
+                }
+                c.Value = (runTime / totalTime).ToString();
+                 
+            }
+
+            return Ok(b);
+        }
 
         [HttpPost("RunSchedule")]
         [ProducesResponseType(StatusCodes.Status200OK)]
