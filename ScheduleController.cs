@@ -236,7 +236,7 @@ namespace SIMTech.APS.Scheduling.API.Controllers
             var job2 = _scheduleDetailRepository.GetQuery(x => x.CreatedOn >= startDate && x.CreatedOn <= endDate && x.ScheduleType != "A" && x.ScheduleType != "U").OrderByDescending(x => x.EndDate).FirstOrDefault();
 
             if (job1 != null) startDate = job1.StartDate;
-            if (job2 != null) startDate = job2.EndDate;
+            if (job2 != null) endDate = job2.EndDate;
 
 
             var a = _scheduleDetailRepository.GetQuery(x => x.CreatedOn >= startDate && x.CreatedOn <= endDate).GroupBy(x => new { x.EquipmentId, x.EquipmentName })
@@ -286,10 +286,10 @@ namespace SIMTech.APS.Scheduling.API.Controllers
                 frozenPeriod = 0.00d;
             }
 
-            if (locationName.IndexOf(' ') > 0)
-            {
-                locationName = (char)34 + locationName + (char)34;
-            }
+            //if (locationName.IndexOf(' ') > 0)
+            //{
+            //    locationName = (char)34 + locationName + (char)34;
+            //}
 
             int exitCode = 0;
 

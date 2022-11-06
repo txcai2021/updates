@@ -1199,8 +1199,7 @@ namespace SIMTech.APS.WorkOrder.API.Controllers
             }
 
             workOrder.CreatedOn = DateTime.Now;
-            workOrder.ModifiedOn = null;
-            workOrder.ModifiedBy = null;
+            if (string.IsNullOrEmpty(workOrder.ModifiedBy) || workOrder.ModifiedBy.Trim() == "0") workOrder.ModifiedBy = null;
 
             await _workOrderRepository.InsertAsync(workOrder);
 
