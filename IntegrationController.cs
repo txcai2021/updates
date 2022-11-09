@@ -108,7 +108,7 @@ namespace SIMTech.APS.Integration.API.Controllers
             ppOrder.PporderDetails.Add(ppOrderDetail);
             await _integrationRepository.Insert<Pporder>(ppOrder);
 
-            await Task.Delay(200);
+            //await Task.Delay(200);
 
             Console.WriteLine("GeneratePPRoute:"+wo.RouteId.ToString()+"/"+ppOrder.Id.ToString() +"/" +wo.ProductNo);
           
@@ -146,6 +146,17 @@ namespace SIMTech.APS.Integration.API.Controllers
         {
             await _integrationRepository.DeleteByWorkOrder(id);
 		}
+
+        [HttpDelete("UnreleaseWOs/{woIds}")]
+        public async Task UnreleaseWorkOrder(string woIds)
+        {
+            var ids= woIds.Split(",");
+            foreach (var id1 in ids)
+            {
+                await _integrationRepository.DeleteByWorkOrder(Int32.Parse(id1));
+            }
+           
+        }
 
         //[HttpGet("GeneratePPOrder/{routeId}/{PPOrderId}/{partNo}")]       
         //public async Task<ActionResult> GenPPRoute(int routeId, int PPOrderId, string partNo)

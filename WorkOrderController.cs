@@ -555,6 +555,8 @@ namespace SIMTech.APS.WorkOrder.API.Controllers
 
             if (n>0) items = ApiGetProducts(string.Join(",", itemIds));
 
+            var workOrdersForRelease = new List<WorkOrderIntegrationPM>();
+
 
             foreach (var wo in modifiedWOs.Where(x=>x.Status ==(byte)EWorkOrderStatus.Pending ))
             {
@@ -592,7 +594,9 @@ namespace SIMTech.APS.WorkOrder.API.Controllers
                                 RouteId = wo.RouteId ?? 0,
                                 SalesOrderDetailId = wo.WorkOrderDetails.Count() == 0 ? null : wo.WorkOrderDetails.First().SalesOrderLineId,
                             };
-                            await ApiIntegrateForRelasedWO(releasedWo);
+
+                            workOrdersForRelease.Add(releasedWo);
+                            //await ApiIntegrateForRelasedWO(releasedWo);
                         }
                         else
                             Console.WriteLine("part not found:" + wo.ProductId.ToString());
@@ -601,6 +605,10 @@ namespace SIMTech.APS.WorkOrder.API.Controllers
                 }
             }
 
+            if (workOrdersForRelease.Count > 0) 
+                await ApiIntegrateForRelasedWOs(workOrdersForRelease);
+
+            string woIdsforUnrelease = "";
             foreach (var wo in modifiedWOs.Where(x => x.Status == (byte)EWorkOrderStatus.Released))
             {
                 var wo1 = workOrders.FirstOrDefault(x => x.workOrderId == wo.Id);
@@ -616,7 +624,12 @@ namespace SIMTech.APS.WorkOrder.API.Controllers
 
                     //DeallocateInventoryToWorkOrder(workOrderId);
 
-                    await ApiIntegrateForUnrelasedWO(wo.Id);                   
+                    if (woIdsforUnrelease == "")
+                        woIdsforUnrelease = wo.Id.ToString();
+                    else
+                        woIdsforUnrelease += ","+wo.Id.ToString();
+                    
+                    //await ApiIntegrateForUnrelasedWO(wo.Id);                   
                 }
                 else
                 {
@@ -642,6 +655,10 @@ namespace SIMTech.APS.WorkOrder.API.Controllers
 
                 }
             }
+
+            if (woIdsforUnrelease != "")
+                await ApiIntegrateForUnrelasedWOs(woIdsforUnrelease);
+
             return Ok(modifiedWOs.Count);
         }
 
@@ -2389,6 +2406,21 @@ namespace SIMTech.APS.WorkOrder.API.Controllers
             }
         }
 
+        private async Task ApiIntegrateForUnrelasedWOs(string woIds)
+        {
+            var apiBaseUrl = Environment.GetEnvironmentVariable("RPS_INTEGRATION_URL");
+
+            if (!string.IsNullOrWhiteSpace(apiBaseUrl))
+            {
+                try
+                {
+                    await HttpHelper.DeleteAsync(apiBaseUrl, $"UnreleaseWOs/{woIds}");
+                }
+                catch { }
+
+            }
+        }
+
         private async Task ApiIntegrateForRelasedWO(WorkOrderIntegrationPM wo)
         {
             var apiBaseUrl = Environment.GetEnvironmentVariable("RPS_INTEGRATION_URL");
@@ -2401,6 +2433,21 @@ namespace SIMTech.APS.WorkOrder.API.Controllers
                 }
                 catch { }
                
+            }
+        }
+
+        private async Task ApiIntegrateForRelasedWOs(List<WorkOrderIntegrationPM> wos)
+        {
+            var apiBaseUrl = Environment.GetEnvironmentVariable("RPS_INTEGRATION_URL");
+
+            if (!string.IsNullOrWhiteSpace(apiBaseUrl))
+            {
+                try
+                {
+                    await HttpHelper.PostAsync<List<WorkOrderIntegrationPM>>(apiBaseUrl, $"ReleaseWOs", wos);
+                }
+                catch { }
+
             }
         }
 
