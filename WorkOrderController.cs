@@ -596,7 +596,7 @@ namespace SIMTech.APS.WorkOrder.API.Controllers
                             };
 
                             workOrdersForRelease.Add(releasedWo);
-                            //await ApiIntegrateForRelasedWO(releasedWo);
+                            await ApiIntegrateForRelasedWO(releasedWo);
                         }
                         else
                             Console.WriteLine("part not found:" + wo.ProductId.ToString());
@@ -605,8 +605,8 @@ namespace SIMTech.APS.WorkOrder.API.Controllers
                 }
             }
 
-            if (workOrdersForRelease.Count > 0) 
-                await ApiIntegrateForRelasedWOs(workOrdersForRelease);
+            //if (workOrdersForRelease.Count > 0) 
+            //    await ApiIntegrateForRelasedWOs(workOrdersForRelease);
 
             string woIdsforUnrelease = "";
             foreach (var wo in modifiedWOs.Where(x => x.Status == (byte)EWorkOrderStatus.Released))
