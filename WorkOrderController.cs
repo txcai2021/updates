@@ -545,6 +545,17 @@ namespace SIMTech.APS.WorkOrder.API.Controllers
 
             var modifiedWOs = existingWOs.Where(wo => workOrders.Any(rel => rel.workOrderId == wo.Id && ((byte)rel.Status != wo.Status || (rel.ReleasedDate!=null && wo.Date1!=null && rel.ReleasedDate != wo.Date1)))).ToList();
 
+            var itemIds = modifiedWOs.Select(x => x.ProductId).Distinct().ToList();
+            var items = _items;
+            int n = 0;
+            foreach (var itemId in itemIds)
+            {
+                if (_items.FirstOrDefault(x => x.Id == itemId) == null) n++;
+            }
+
+            if (n>0) items = ApiGetProducts(string.Join(",", itemIds));
+
+
             foreach (var wo in modifiedWOs.Where(x=>x.Status ==(byte)EWorkOrderStatus.Pending ))
             {
                 var wo1 = workOrders.FirstOrDefault(x => x.workOrderId == wo.Id);
@@ -562,22 +573,30 @@ namespace SIMTech.APS.WorkOrder.API.Controllers
                     //dispatch to integration tables
                     if (wo.Quantity > 0)
                     {
-                        var product =ApiGetProduct(wo.ProductId);
-                        var releasedWo = new WorkOrderIntegrationPM()
+                        //var product =ApiGetProduct(wo.ProductId);
+                        var product = items.FirstOrDefault(x => x.Id == wo.ProductId);
+                        if (product != null)
                         {
-                            Id = wo.Id,
-                            WorkOrderNumber = wo.WorkOrderNumber,
-                            IssueDate = wo.IssueDate,
-                            DueDate = wo.DueDate,
-                            ProductId = wo.ProductId,
-                            ProductNo = product.Name,
-                            ProductFamily = product.PartFamily,
-                            Quantity =wo.Quantity,
-                            Priority = wo.Priority??50,
-                            RouteId =wo.RouteId??0,
-                            SalesOrderDetailId = wo.WorkOrderDetails.Count()==0?null: wo.WorkOrderDetails.First().SalesOrderLineId,
-                        };
-                        await ApiIntegrateForRelasedWO(releasedWo);
+                            var releasedWo = new WorkOrderIntegrationPM()
+                            {
+                                Id = wo.Id,
+                                WorkOrderNumber = wo.WorkOrderNumber,
+                                IssueDate = wo.IssueDate,
+                                DueDate = wo.DueDate,
+                                ProductId = wo.ProductId,
+                                ProductNo = product.Name,
+                                //ProductFamily = product.PartFamily,
+                                ProductFamily = product.String1,
+                                Quantity = wo.Quantity,
+                                Priority = wo.Priority ?? 50,
+                                RouteId = wo.RouteId ?? 0,
+                                SalesOrderDetailId = wo.WorkOrderDetails.Count() == 0 ? null : wo.WorkOrderDetails.First().SalesOrderLineId,
+                            };
+                            await ApiIntegrateForRelasedWO(releasedWo);
+                        }
+                        else
+                            Console.WriteLine("part not found:" + wo.ProductId.ToString());
+                        
                     }
                 }
             }
@@ -1329,7 +1348,7 @@ namespace SIMTech.APS.WorkOrder.API.Controllers
             workOrder.RouteId = ApiGetRouteforProduct(soLine.ProductId, product.PartFamily);
             workOrder.UrgentFlag = soLine.UrgentFlag;
             workOrder.Priority = (short)(soLine.UrgentFlag == EWorkOrderUrgentFlag.Standard ? 50 : (soLine.UrgentFlag == EWorkOrderUrgentFlag.Urgent ? 88 : 99));
-            workOrder.DueDate = (soLine.DueDate ?? DateTime.Now).AddDays(_defaultInternalTurnaroundTime);
+            workOrder.DueDate = (soLine.DueDate ?? DateTime.Now).AddDays(-_defaultInternalTurnaroundTime);
             //workOrder.LocationId = currentWorkOrder.LocationId;                      
 
            
@@ -1427,7 +1446,7 @@ namespace SIMTech.APS.WorkOrder.API.Controllers
                 workOrder.KitTypeId = currentWorkOrder.ProductId;
                 workOrder.RouteId = ApiGetRouteforProduct(part.Id,part.PartFamily);
 
-                if (workOrder.DueDate > workOrder.IssueDate.AddDays(_defaultAssemblyleadTime))
+                if (workOrder.DueDate > workOrder.IssueDate.AddDays(-_defaultAssemblyleadTime))
                     workOrder.DueDate = workOrder.DueDate.AddDays(-_defaultAssemblyleadTime);
 
                 currentWorkOrder.OrderType = EWorkOrderType.Assembly;

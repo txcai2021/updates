@@ -323,7 +323,7 @@ namespace SIMTech.APS.Scheduling.API.Controllers
             if (autoRun == "T" && exitCode > 0)
             {
                 Console.WriteLine("Auto dispatch for schedule Id:" + exitCode.ToString ());
-                await Task.Delay(3000);
+                await Task.Delay(1500);
                 await ConfirmSchedule(exitCode);
             }
 
