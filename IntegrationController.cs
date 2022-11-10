@@ -57,62 +57,23 @@ namespace SIMTech.APS.Integration.API.Controllers
 		}
 
 
-        [HttpPost("ReleaseWOs")]
-        public async Task GeneratePPOrders([FromBody] List<WorkOrderIntegrationPM> wos)
+        [HttpPost("ReleaseWOs/{genRoute}")]
+        public async Task GeneratePPOrders(string genRoute,[FromBody] List<WorkOrderIntegrationPM> wos)
         {
 
             foreach (var wo in wos)
             {
-                await GeneratePPOrder(wo);
+                await GeneratePPOrder1(wo, (genRoute!="F"));
             }
 
-            await Task.Delay(500);
         }
 
 
         [HttpPost("ReleaseWO")]
         public async Task GeneratePPOrder([FromBody] WorkOrderIntegrationPM wo)
         {
+            await GeneratePPOrder1(wo);
 
-            await _integrationRepository.DeleteByWorkOrderNumber(wo.WorkOrderNumber);
-
-            var ppOrder = new Pporder() 
-			{ 
-				GoldContent = "", 
-				Size = "", 
-				BasicChainType = wo.ProductFamily, 
-				AllocWeight = wo.Priority, 
-				Description = "", 
-				Type = "1", 
-				IssueDate = wo.IssueDate, 
-				Status = "Pending" 
-			};
-         
-			var ppOrderDetail = new PporderDetail()
-			{				 
-				//Ppid = ppOrder.Id,
-				PartNo = wo.ProductNo,
-				SublotId = wo.WorkOrderNumber,
-				SalesOrderId =wo.Id,
-				SalesOrderDetId = wo.SalesOrderDetailId,
-				Weight = (decimal)wo.Quantity,
-				Remark = "",
-				EstCompletionDate = wo.DueDate
-			};
-
-			//await _integrationRepository.DeleteByWorkOrder(wo.Id);
-
-            //await _integrationRepository.DeleteByWorkOrderNumber(wo.WorkOrderNumber);
-
-
-            ppOrder.PporderDetails.Add(ppOrderDetail);
-            await _integrationRepository.Insert<Pporder>(ppOrder);
-
-            await Task.Delay(200);
-
-            Console.WriteLine("GeneratePPRoute:"+wo.RouteId.ToString()+"/"+ppOrder.Id.ToString() +"/" +wo.ProductNo);
-          
-            var result = await _integrationRepository.GeneratePPRoute(wo.RouteId, ppOrder.Id, wo.ProductNo);
         }
 
 		[HttpPost("PPRoute")]
@@ -157,19 +118,55 @@ namespace SIMTech.APS.Integration.API.Controllers
             }
            
         }
+ 
+        private async Task GeneratePPOrder1(WorkOrderIntegrationPM wo, bool generateRoute=true)
+        {
+            Console.WriteLine("Generate PP Order:"+wo.WorkOrderNumber+"/"+ generateRoute.ToString ());
+            await _integrationRepository.DeleteByWorkOrderNumber(wo.WorkOrderNumber);
 
-        //[HttpGet("GeneratePPOrder/{routeId}/{PPOrderId}/{partNo}")]       
-        //public async Task<ActionResult> GenPPRoute(int routeId, int PPOrderId, string partNo)
-        //{
-        //    var result = await _integrationRepository.GeneratePPRoute(routeId,PPOrderId,partNo);
+            var ppOrder = new Pporder()
+            {
+                GoldContent = "",
+                Size = "",
+                BasicChainType = wo.ProductFamily,
+                AllocWeight = wo.Priority,
+                Description = "",
+                Type = "1",
+                IssueDate = wo.IssueDate,
+                Status = "Pending"
+            };
 
-        //    return Ok(result);
+            var ppOrderDetail = new PporderDetail()
+            {
+                //Ppid = ppOrder.Id,
+                PartNo = wo.ProductNo,
+                SublotId = wo.WorkOrderNumber,
+                SalesOrderId = wo.Id,
+                SalesOrderDetId = wo.SalesOrderDetailId,
+                Weight = (decimal)wo.Quantity,
+                Remark = "",
+                EstCompletionDate = wo.DueDate
+            };
 
-        //}
+            //await _integrationRepository.DeleteByWorkOrder(wo.Id);
 
-        // DELETE api/<IntegrationController>/5
-        //[HttpDelete("{id}")]
-        //public async Task DeletePPorder(int id) => await _integrationRepository.Delete(id);       
+            //await _integrationRepository.DeleteByWorkOrderNumber(wo.WorkOrderNumber);
+
+
+            ppOrder.PporderDetails.Add(ppOrderDetail);
+            await _integrationRepository.Insert<Pporder>(ppOrder);
+
+
+            if (generateRoute)
+            {
+                await Task.Delay(200);
+
+                Console.WriteLine("GeneratePPRoute:" + wo.RouteId.ToString() + "/" + ppOrder.Id.ToString() + "/" + wo.ProductNo);
+
+                var result = await _integrationRepository.GeneratePPRoute(wo.RouteId, ppOrder.Id, wo.ProductNo);
+            }
+           
+        }
 
         private async Task GeneratePPRoute(int routeId, int ppOrderId, string productNo)
         {

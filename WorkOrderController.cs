@@ -596,7 +596,7 @@ namespace SIMTech.APS.WorkOrder.API.Controllers
                             };
 
                             workOrdersForRelease.Add(releasedWo);
-                            await ApiIntegrateForRelasedWO(releasedWo);
+                            //await ApiIntegrateForRelasedWO(releasedWo);
                         }
                         else
                             Console.WriteLine("part not found:" + wo.ProductId.ToString());
@@ -605,8 +605,9 @@ namespace SIMTech.APS.WorkOrder.API.Controllers
                 }
             }
 
-            //if (workOrdersForRelease.Count > 0) 
-            //    await ApiIntegrateForRelasedWOs(workOrdersForRelease);
+            Console.WriteLine("Count of workOrders for release:" + workOrdersForRelease.ToString ());
+            if (workOrdersForRelease.Count > 0)
+                await ApiIntegrateForRelasedWOs(workOrdersForRelease);
 
             string woIdsforUnrelease = "";
             foreach (var wo in modifiedWOs.Where(x => x.Status == (byte)EWorkOrderStatus.Released))
@@ -2440,11 +2441,17 @@ namespace SIMTech.APS.WorkOrder.API.Controllers
         {
             var apiBaseUrl = Environment.GetEnvironmentVariable("RPS_INTEGRATION_URL");
 
+            var genRoute = ApiGetOptionSettingByName("GeneratePPRoute");
+            if (genRoute == "") genRoute = "T";
+
+            Console.WriteLine("GeneratePPRoute:" + genRoute);
+
+
             if (!string.IsNullOrWhiteSpace(apiBaseUrl))
             {
                 try
                 {
-                    await HttpHelper.PostAsync<List<WorkOrderIntegrationPM>>(apiBaseUrl, $"ReleaseWOs", wos);
+                    await HttpHelper.PostAsync<List<WorkOrderIntegrationPM>>(apiBaseUrl, $"ReleaseWOs/{genRoute}", wos);
                 }
                 catch { }
 
