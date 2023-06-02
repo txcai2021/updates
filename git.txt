@@ -13,3 +13,9 @@ git push -u origin main
 
  git config --global user.name "txcai2021"
  git config --global user.email "tianxiang@gmail.com"
+
+//update changes to server
+git status
+git add .
+git commit -m "some comments here"
+git push / git push origin dev / git push origin master  
