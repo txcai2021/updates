@@ -75,7 +75,6 @@ namespace SIMTech.APS.Integration.RabbitMQ
             //_channel.QueueBind(_queueName, _exchangeName, "rps-customer", null);
             //_channel.BasicQos(0, 1, false);
 
-            ApiGetCustomerByName("001");
             _connection.ConnectionShutdown += RabbitMQ_ConnectionShutdown;
         }
 
@@ -180,6 +179,60 @@ namespace SIMTech.APS.Integration.RabbitMQ
             base.Dispose();
         }
 
+
+        private bool PublishMessage( SalesOrderStatus salesOrderStatus)
+        {
+
+            //var factory = new ConnectionFactory()
+            //{
+            //    HostName = Environment.GetEnvironmentVariable("RABBITMQ_HOST"),
+            //    Port = Convert.ToInt32(Environment.GetEnvironmentVariable("RABBITMQ_PORT")),
+            //    UserName = Environment.GetEnvironmentVariable("RABBITMQ_USERNAME"),
+            //    Password = Environment.GetEnvironmentVariable("RABBITMQ_PASSWORD")
+            //};
+
+            //var vHost = Environment.GetEnvironmentVariable("RABBITMQ_VHOST") ?? string.Empty;
+            //if (vHost != string.Empty) factory.VirtualHost = vHost;
+
+            //Console.WriteLine(factory.HostName + ":" + factory.Port + "/" + factory.VirtualHost);
+
+
+            //using (var connection = factory.CreateConnection())
+            using (var channel = _connection.CreateModel())
+            {
+                var exchangeName = Environment.GetEnvironmentVariable("RABBITMQ_EXCHANGE") ?? "cpps-rps";
+
+                if (exchangeName != string.Empty) channel.ExchangeDeclare(exchange: exchangeName, type: ExchangeType.Direct);
+
+                var queueNameList = Environment.GetEnvironmentVariable("RABBITMQ_QUEUES_SALESORDER") ?? "rps-salesorder-status";
+               
+                var queueNames = queueNameList.Split(",");
+
+                foreach (var queueName in queueNames)
+                {
+                    channel.QueueDeclare(queue: queueName,
+                                       durable: true,
+                                       exclusive: false,
+                                       autoDelete: false,
+                                       arguments: null);
+
+                    channel.QueueBind(queueName, exchangeName, "rps-salesorder-status", null);
+                }
+
+                
+                var body = Encoding.Default.GetBytes(Newtonsoft.Json.JsonConvert.SerializeObject(salesOrderStatus));
+
+
+                channel.BasicPublish(exchange: exchangeName,
+                                        routingKey: "rps-salesorder-status",
+                                        basicProperties: null,
+                                        body: body);
+               
+            }
+
+            return true;
+        }
+
         private int ApiAddSalesOrder(SalesOrderCS salesOrder)
         {
             int orderId = 0;
@@ -188,7 +241,9 @@ namespace SIMTech.APS.Integration.RabbitMQ
 
             if (customerId == 0)
             {
-                Console.WriteLine("Invalid customer id!");
+                Console.WriteLine("Customer name not found:"+salesOrder.CustomerName );
+                var ss = new SalesOrderStatus() { SalesOrderNumber = salesOrder.OrderNo, LineNo = 0, StatusCode = 0, Status = "Customer name not found:"+salesOrder.CustomerName  };
+                PublishMessage(ss);
                 return 0;
             }
             //var customerId = salesOrder.CustomerId;
@@ -238,14 +293,27 @@ namespace SIMTech.APS.Integration.RabbitMQ
                     {
                         orderId = result.Id;
                         Console.WriteLine("After call post api, sales order Id:"+orderId.ToString());
+
+                        var ss = new SalesOrderStatus() { SalesOrderNumber = salesOrder.OrderNo, LineNo = orderId, StatusCode = (byte)ESalesOrderStatus.Pending, Status = ESalesOrderStatus.Pending.ToString() };
+                        PublishMessage(ss);
+
                         var workOrderId = ApiGenerateWorkOrder(result);
                         if (workOrderId > 0) Console.WriteLine("Work Order has been generated succesfully");
+                    }
+                    else
+                    {
+                        var ss = new SalesOrderStatus() { SalesOrderNumber = salesOrder.OrderNo, LineNo = 0, StatusCode = 0, Status = "NULL" };
+                        PublishMessage(ss);
                     }
                 }
                 catch (Exception e)
                 {
                     Console.WriteLine("Error in calling api to add sales order");
-                    _logger.LogInformation( e.Message+e.InnerException!=null? e.InnerException.Message:""); 
+                    var msg = e.Message + e.InnerException != null ? e.InnerException.Message : "";
+                    _logger.LogInformation(msg);
+
+                    var ss = new SalesOrderStatus() { SalesOrderNumber = salesOrder.OrderNo, LineNo = 0, StatusCode = 0, Status = msg };
+                    PublishMessage(ss);
                 }
             }
 
