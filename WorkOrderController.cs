@@ -99,50 +99,70 @@ namespace SIMTech.APS.WorkOrder.API.Controllers
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<ActionResult<IEnumerable<WorkOrderPM>>> GetWorkOrdersByCategory(int category)
         {
-            var st = DateTime.Now;
-            Console.WriteLine("GetWorkOrder started at " + st.ToString ());
-            var userList = new List<string>();
-            //int role = GetUserRole(userList);
-            int role = 0;
 
-            var st1 = DateTime.Now;
-            var sortBy = ApiGetOptionSettingByName("WO_SortOrderByDueDate");
-            var sortOrder = ApiGetOptionSettingByName("WO_SortOrder");
-            var updateStatus = ApiGetOptionSettingByName("UpdateWorkOrderStatus");
-            Console.WriteLine("Duration for Setting " + (DateTime.Now- st1).TotalSeconds.ToString());
+            var workOrderPMs=await GetWorkOrdersByCategoryWithPage(category);
+            //var st = DateTime.Now;
+            //Console.WriteLine("GetWorkOrder started at " + st.ToString ());
+            //var userList = new List<string>();
+            ////int role = GetUserRole(userList);
+            //int role = 0;
 
-
-
-            st1 = DateTime.Now;
-            if (updateStatus == "T" && category!= (int)EWorkOrderCategory.Completed)
-            {
-                await _workOrderRepository.UpdateWorkOrderStatus();
-                Console.WriteLine("Duration for updating work order status " + (DateTime.Now - st1).TotalSeconds.ToString());
-            }
-
-            st1 = DateTime.Now;
-            var workOrders = await _workOrderRepository.GetWorkOrdersByCategory((EWorkOrderCategory) category,sortBy=="T", sortOrder=="D",role,userList);
-            Console.WriteLine("Duration for retrieving work orders from DB " + (DateTime.Now - st1).TotalSeconds.ToString());
-
-            var workOrderPMs = WorkOrderMapper.ToPresentationModels(workOrders).ToList();
-
-            st1 = DateTime.Now;
-            GetAllAddtitionalDataFromOtherServices(workOrders.ToList());
-            Console.WriteLine("Duration for getting all additional data using APIs " + (DateTime.Now - st1).TotalSeconds.ToString());
-
-            st1 = DateTime.Now;
-            foreach (var workOrderPm in workOrderPMs)
-            {
-                AssignAdditionalInformaitonForWorkOrder(workOrderPm);
-            }
-
-            AssignPOnumberForChildWorkOrders(workOrderPMs);
-            Console.WriteLine("Duration for assigning additional info " + (DateTime.Now - st1).TotalSeconds.ToString());
+            //var st1 = DateTime.Now;
+            //var sortBy = ApiGetOptionSettingByName("WO_SortOrderByDueDate");
+            //var sortOrder = ApiGetOptionSettingByName("WO_SortOrder");
+            //var updateStatus = ApiGetOptionSettingByName("UpdateWorkOrderStatus");
+            //Console.WriteLine("Duration for Setting " + (DateTime.Now- st1).TotalSeconds.ToString());
 
 
-            var et = DateTime.Now;
-            Console.WriteLine("GetWorkOrder ended at " + et.ToString() +" Duration(seconds):" +(et-st).TotalSeconds.ToString ());
 
+            //st1 = DateTime.Now;
+            //if (updateStatus == "T" && category!= (int)EWorkOrderCategory.Completed)
+            //{
+            //    await _workOrderRepository.UpdateWorkOrderStatus();
+            //    Console.WriteLine("Duration for updating work order status " + (DateTime.Now - st1).TotalSeconds.ToString());
+            //}
+
+            //st1 = DateTime.Now;
+            //var workOrders = await _workOrderRepository.GetWorkOrdersByCategory((EWorkOrderCategory) category,sortBy=="T", sortOrder=="D",role,userList);
+            //Console.WriteLine("Duration for retrieving work orders from DB " + (DateTime.Now - st1).TotalSeconds.ToString());
+
+            //var workOrderPMs = WorkOrderMapper.ToPresentationModels(workOrders).ToList();
+
+            //st1 = DateTime.Now;
+            //GetAllAddtitionalDataFromOtherServices(workOrders.ToList());
+            //Console.WriteLine("Duration for getting all additional data using APIs " + (DateTime.Now - st1).TotalSeconds.ToString());
+
+            //st1 = DateTime.Now;
+            //foreach (var workOrderPm in workOrderPMs)
+            //{
+            //    AssignAdditionalInformaitonForWorkOrder(workOrderPm);
+            //}
+
+            //AssignPOnumberForChildWorkOrders(workOrderPMs);
+            //Console.WriteLine("Duration for assigning additional info " + (DateTime.Now - st1).TotalSeconds.ToString());
+
+
+            //var et = DateTime.Now;
+            //Console.WriteLine("GetWorkOrder ended at " + et.ToString() +" Duration(seconds):" +(et-st).TotalSeconds.ToString ());
+
+            return workOrderPMs;
+        }
+
+        [HttpGet("Category/Count/{category}")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public async Task<ActionResult<int>> CountWorkOrdersByCategory(int category)
+        {
+            var n = await _workOrderRepository.CountWorkOrdersByCategory((EWorkOrderCategory)category,false,true,0,new List<string>());
+            return n;
+        }
+
+            [HttpGet("CategoryByPage/{category}/{pageNo}/{pageSize}")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public async Task<ActionResult<IEnumerable<WorkOrderPM>>> GetWorkOrdersByCategoryPage(int category, int pageNo, int pageSize)
+        {
+            var workOrderPMs = await GetWorkOrdersByCategoryWithPage(category,pageNo ,pageSize );           
             return workOrderPMs;
         }
 
@@ -1009,9 +1029,7 @@ namespace SIMTech.APS.WorkOrder.API.Controllers
         {
             var materialShortages = new List<IdNamePM>();
 
-            //var salesOrder =ApiGetSalesOrderByPO(poNumber);
-
-            var salesOrder = ApiGetSalesOrder(33247);
+            var salesOrder =ApiGetSalesOrderByPO(poNumber);
 
             if (salesOrder !=null)
             {
@@ -1136,7 +1154,11 @@ namespace SIMTech.APS.WorkOrder.API.Controllers
 
                     if (statusCode == (byte)EWorkOrderStatus.Completed)
                     {
-                        var materialId = ApiGetLinkedMaterial(wo.ProductId);
+                        var materialId = 0;
+                        if (!string.IsNullOrWhiteSpace(woStatus.Description))
+                            materialId = ApiGetLinkedMaterial(woStatus.Description);
+                        else
+                            materialId = ApiGetLinkedMaterial(wo.ProductId);
 
                         var material = new Material()
                         {
@@ -2260,7 +2282,56 @@ namespace SIMTech.APS.WorkOrder.API.Controllers
             }
             Console.WriteLine("Duration for getting createdby/releasedby user info " + (DateTime.Now - st1).TotalSeconds.ToString()+ ",createdby/releasedby:" + _displayNames.Count().ToString());
         }
-       
+
+        private async Task<List<WorkOrderPM>> GetWorkOrdersByCategoryWithPage(int category, int pageNo=0, int pageSize =0)
+        {
+            var st = DateTime.Now;
+            Console.WriteLine("GetWorkOrder started at " + st.ToString());
+            var userList = new List<string>();
+            //int role = GetUserRole(userList);
+            int role = 0;
+
+            var st1 = DateTime.Now;
+            var sortBy = ApiGetOptionSettingByName("WO_SortOrderByDueDate");
+            var sortOrder = ApiGetOptionSettingByName("WO_SortOrder");
+            var updateStatus = ApiGetOptionSettingByName("UpdateWorkOrderStatus");
+            Console.WriteLine("Duration for Setting " + (DateTime.Now - st1).TotalSeconds.ToString());
+
+
+
+            st1 = DateTime.Now;
+            if (updateStatus == "T" && category != (int)EWorkOrderCategory.Completed)
+            {
+                await _workOrderRepository.UpdateWorkOrderStatus();
+                Console.WriteLine("Duration for updating work order status " + (DateTime.Now - st1).TotalSeconds.ToString());
+            }
+
+            st1 = DateTime.Now;
+            var workOrders = await _workOrderRepository.GetWorkOrdersByCategory((EWorkOrderCategory)category, sortBy == "T", sortOrder == "D", role, userList,pageNo,pageSize);
+            Console.WriteLine("Duration for retrieving work orders from DB " + (DateTime.Now - st1).TotalSeconds.ToString());
+
+            var workOrderPMs = WorkOrderMapper.ToPresentationModels(workOrders).ToList();
+
+            st1 = DateTime.Now;
+            GetAllAddtitionalDataFromOtherServices(workOrders.ToList());
+            Console.WriteLine("Duration for getting all additional data using APIs " + (DateTime.Now - st1).TotalSeconds.ToString());
+
+            st1 = DateTime.Now;
+            foreach (var workOrderPm in workOrderPMs)
+            {
+                AssignAdditionalInformaitonForWorkOrder(workOrderPm);
+            }
+
+            AssignPOnumberForChildWorkOrders(workOrderPMs);
+            Console.WriteLine("Duration for assigning additional info " + (DateTime.Now - st1).TotalSeconds.ToString());
+
+
+            var et = DateTime.Now;
+            Console.WriteLine("GetWorkOrder ended at " + et.ToString() + " Duration(seconds):" + (et - st).TotalSeconds.ToString());
+
+            return workOrderPMs;
+        }
+
 
 
         #endregion
@@ -2423,15 +2494,23 @@ namespace SIMTech.APS.WorkOrder.API.Controllers
             SalesOrderPM so = null;
             var apiBaseUrl = Environment.GetEnvironmentVariable("RPS_SALESORDER_URL");
 
+            Console.WriteLine("apiGetSalesOrderByPO:" + poNumber.ToString());
+
             if (!string.IsNullOrWhiteSpace(apiBaseUrl))
             {
                 try
                 {
                     so = HttpHelper.Get<SalesOrderPM>(apiBaseUrl, $"PONumber/{poNumber}");
                 }
-                catch { }
+                catch (Exception e)
+                {
+                    Console.WriteLine("Error in getting sales order:" + $"PONumber/{poNumber}");
+                    Console.WriteLine(e.Message);
+                    if (e.InnerException != null) Console.WriteLine(e.InnerException.Message);
+                }
             }
 
+            if (so!=null) Console.WriteLine("apiGetSalesOrderByPO:" + so.Id.ToString ());
             return so;
         }
 
@@ -2900,6 +2979,29 @@ namespace SIMTech.APS.WorkOrder.API.Controllers
                 try
                 {
                     var result = HttpHelper.Get<ItemPM>(apiBaseUrl, $"Material/LinkedPart/{partId}");
+                    if (result != null) materialId = result.Id;
+                }
+                catch (Exception e)
+                {
+                    Console.WriteLine($"{ e.Message}");
+                    if (e.InnerException != null) Console.WriteLine($"{ e.InnerException.Message}");
+                }
+            }
+
+            return materialId;
+        }
+
+        private int ApiGetLinkedMaterial(string partName)
+        {
+            var materialId = 0;
+
+            var apiBaseUrl = Environment.GetEnvironmentVariable("RPS_PRODUCT_URL");
+
+            if (!string.IsNullOrWhiteSpace(apiBaseUrl))
+            {
+                try
+                {
+                    var result = HttpHelper.Get<ItemPM>(apiBaseUrl, $"Material/LinkedPartName/{partName}");
                     if (result != null) materialId = result.Id;
                 }
                 catch (Exception e)
